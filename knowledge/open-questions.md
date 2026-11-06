@@ -14,8 +14,8 @@ Status: ☐ open · ☑ answered. Answers are written here (with date) and the a
 | Q8 | UI language for v1: bilingual labels mirroring the paper (D13) — acceptable, or should the whole UI switch Arabic/English? | Dr. Ayman | ☐ |
 | Q9 | Postnatal "Payment" field on the OBS paper file — keep as a plain text field (current mapping), or drop it from the digital file? | Dr. Ayman | ☐ |
 | Q10 | AI Lab Reader go-live: which provider is acceptable after legal review (OpenAI / Anthropic / Gemini), given DPA availability? | Ahmed | ☐ |
-| Q11 | Approve adding an `appointments` table (needed for "today's list", no-shows, booking — dashboards gap G1)? | Dr. Ayman | ☐ |
-| Q12 | Approve a structured `nextVisitDate` on visits alongside the free-text "management & next visit" (enables overdue-follow-up alerts — gap G2)? | Dr. Ayman | ☐ |
-| Q13 | Approve a `diagnoses` entity per episode (coded problem + free text) — needed for diagnosis-distribution statistics promised in the ChatGPT discussion (gap G3)? | Dr. Ayman | ☐ |
-| Q14 | Does he want a `location` field (which clinic the visit happened at) for per-branch dashboards (gap G4)? | Dr. Ayman | ☐ |
-| Q15 | Dashboard priority check: DB1 Operations + DB2 High-Risk Board proposed for Phase 2; DB3 Outcomes + DB4 Prescribing for Phase 3 — does this match what he wants to see first? | Dr. Ayman / Ahmed | ☐ |
+| Q11 | Approve adding an `appointments` table (needed for "today's list", no-shows, booking — dashboards gap G1)? | Dr. Ayman | ☑ approved 2026-11-06 (D21) |
+| Q12 | Approve a structured `nextVisitDate` on visits alongside the free-text "management & next visit" (enables overdue-follow-up alerts — gap G2)? | Dr. Ayman | ☑ approved 2026-11-06 (D21) |
+| Q13 | Approve a `diagnoses` entity per episode (coded problem + free text) — needed for diagnosis-distribution statistics promised in the ChatGPT discussion (gap G3)? | Dr. Ayman | ☑ approved 2026-11-06 (D21) |
+| Q14 | Does he want a `location` field (which clinic the visit happened at) for per-branch dashboards (gap G4)? | Dr. Ayman | ☑ approved 2026-11-06 (D21) |
+| Q15 | Dashboard priority check: DB1 Operations + DB2 High-Risk Board proposed for Phase 2; DB3 Outcomes + DB4 Prescribing for Phase 3 — does this match what he wants to see first? | Dr. Ayman / Ahmed | ☑ answered 2026-11-06 — DB4 Prescribing promoted to Phase 2 (D22) |

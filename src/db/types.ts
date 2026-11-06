@@ -44,6 +44,24 @@ export interface VisitDto {
   complaints: string | null;
   management: string | null;
   nextVisit: string | null;
+  nextVisitDate: string | null;
+  location: string | null;
+}
+
+export interface DiagnosisDto {
+  id: string;
+  label: string;
+  code: string | null;
+  status: string;
+  diagnosedAt: string;
+}
+
+export interface AppointmentDto {
+  id: string;
+  scheduledAt: string;
+  status: string;
+  location: string | null;
+  reason: string | null;
 }
 
 export interface SemenAnalysisDto {
@@ -89,6 +107,7 @@ export interface EpisodeDto {
   visits: VisitDto[];
   semenAnalyses: SemenAnalysisDto[];
   prescriptions: PrescriptionDto[];
+  diagnoses: DiagnosisDto[];
 }
 
 export interface PatientDetailDto {
@@ -102,4 +121,5 @@ export interface PatientDetailDto {
   identity: { fullName: string; mobile: string | null; address: string | null; husbandName: string | null } | null;
   episodes: EpisodeDto[];
   labReports: LabReportDto[];
+  appointments: AppointmentDto[];
 }

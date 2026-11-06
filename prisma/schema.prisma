@@ -39,6 +39,34 @@ model Patient {
   episodes          Episode[]
   labReports        LabReport[]
   attachments       Attachment[]
+  appointments      Appointment[]
+}
+
+// Booking & daily list (gap G1, approved Q11)
+model Appointment {
+  id          String   @id @default(uuid())
+  patientId   String
+  patient     Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  episodeId   String?
+  episode     Episode? @relation(fields: [episodeId], references: [id], onDelete: SetNull)
+  scheduledAt DateTime
+  status      String   @default("scheduled") // scheduled | arrived | seen | no_show | cancelled
+  location    String?
+  reason      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Coded problem per episode (gap G3, approved Q13) — drives diagnosis analytics
+model Diagnosis {
+  id          String   @id @default(uuid())
+  episodeId   String
+  episode     Episode  @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  code        String?  // future ICD-10; optional for now
+  label       String
+  status      String   @default("active") // active | resolved
+  diagnosedAt DateTime @default(now())
+  notes       String?
 }
 
 // RESTRICTED — identity ↔ code mapping, access-controlled separately (D11)
@@ -60,6 +88,7 @@ model Episode {
   status    String   @default("open") // open | closed
   openedAt  DateTime @default(now())
   closedAt  DateTime?
+  location  String? // primary clinic for this episode (gap G4, approved Q14)
 
   pregnancy   PregnancyDetails?
   gyn         GynDetails?
@@ -68,6 +97,8 @@ model Episode {
   visits      Visit[]
   labReports  LabReport[]
   prescriptions Prescription[]
+  diagnoses   Diagnosis[]
+  appointments Appointment[]
 }
 
 model PregnancyDetails {
@@ -161,6 +192,8 @@ model Visit {
   complaints   String?
   management   String?
   nextVisit    String?
+  nextVisitDate DateTime? // structured (gap G2, approved Q12) — enables overdue-follow-up alerts
+  location     String?   // which clinic (gap G4, approved Q14)
   notes        String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

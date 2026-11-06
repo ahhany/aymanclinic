@@ -50,6 +50,7 @@ Header: OBSTETRIC — YEAR · DURATION · PREGNANCY · COMP · MODE · POST-PART
 | Blood Group / RH Type | patients · blood_group, rh_type | enum? | A/B/AB/O · +/− |
 | LMP / EDD | pregnancy_details · lmp_date, edd_date | date? | EDD derivable from LMP; both stored (paper records both) |
 | **Visit grid** (14 paper rows): Date, WT (Kg), B/P, U/S, Complaints, Management And Next Visit | visits · visit_date, weight_kg (decimal?), bp_systolic (int?), bp_diastolic (int?), ultrasound_note (text?), complaints (text?), management (text?), next_visit (text?) | | unlimited rows; GA computed at visit_date from LMP |
+| (structured, not on paper) | visits · next_visit_date (date?), location (text?) | | approved additions G2/G4 (D21) — overdue-follow-up alerts, per-clinic views |
 | **Lab grid**: Date, HB %, ferritin, TLC, PLT, ALT, AST, Creat, Urea, PT, PC, FBS, PPBS, Urine, Ca++, TSH | lab_reports (report_date) → lab_results rows with test_codes: CBC_HB, FERRITIN, CBC_WBC (TLC), CBC_PLT, ALT, AST, CREATININE, UREA, PT, PC, FBS, PPBS, URINE_ANALYSIS, CALCIUM, TSH | | each result: value, unit, ref range, abnormal_flag, verification_status |
 
 ## GYN file — page 1
@@ -76,6 +77,15 @@ Header: OBSTETRIC — YEAR · DURATION · PREGNANCY · COMP · MODE · POST-PART
 - `lab_results.normalized_value` — unit-normalized at query time (D10).
 - `lab_reports.ai_extraction_status` — pending / reviewed / confirmed (D9).
 - All tables: created_at, updated_at, created_by → audit_log.
+
+## Approved Phase-1 additions (D21 — from the dashboard design gaps)
+
+| Table · column | Type | Purpose |
+|---|---|---|
+| `appointments` (new table) | scheduled_at, status (scheduled/arrived/seen/no_show/cancelled), location?, reason?, patient FK, episode FK? | today's list, no-shows, booking (DB1) |
+| `visits.next_visit_date` | date? | overdue-follow-up alerts (DB2); complements free-text next_visit |
+| `visits.location`, `episodes.location` | text? | per-clinic dashboards |
+| `diagnoses` (new table) | label, code? (future ICD-10), status (active/resolved), diagnosed_at, episode FK | diagnosis distribution & research cohorts (DB4) |
 
 ## Seed data: test_definitions (initial panel)
 

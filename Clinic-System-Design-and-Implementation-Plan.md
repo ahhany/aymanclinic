@@ -161,10 +161,10 @@ Repo init in the real stack (nothing throwaway): Vite/React/TS/Tailwind/shadcn, 
 Patient registry & search; OBS + GYN digital forms (hybrid layout, paper colours); visit grids; manual lab entry; attachments; medication library; patient-file print-to-PDF; roles; audit log; local backup/export. Schema additions from the dashboard design, if approved (Q11–Q14): `appointments`, `visits.nextVisitDate`, `diagnoses`, `location`. **Exit gate: full e2e suite green on 10 fictional patients.**
 
 **Phase 2 — AI & research engine + daily dashboards (weeks 8–12)**
-AI Lab Reader (Review & Confirm), additional-tests dictionary UI, medication analytics, Research Export Engine with the Hb < 11 template, offline draft hardening. **Dashboards DB1 (Operations) and DB2 (High-Risk Pregnancy Board)** — the two daily-use boards.
+AI Lab Reader (Review & Confirm), additional-tests dictionary UI, medication analytics, Research Export Engine with the Hb < 11 template, offline draft hardening. **Dashboards DB1 (Operations), DB2 (High-Risk Pregnancy Board) and DB4 (Prescribing & Practice Analytics — promoted at Dr. Ayman's request, D22).**
 
 **Phase 3 — Expansion (after review of the ICSI paper file)**
-ICSI/IVF module; **dashboards DB3 (Outcomes & Quality), DB4 (Prescribing), DB5 (Research)**; intelligent reports I1–I9 (pre-visit briefs, lab-trend narratives, missing-data reminders, clinical search, voice dictation, prescribing insights, combination watches, cohort suggestions); advanced filters and anonymized research datasets.
+ICSI/IVF module; **dashboards DB3 (Outcomes & Quality) and DB5 (Research & Export)**; intelligent reports I1–I9 (pre-visit briefs, lab-trend narratives, missing-data reminders, clinical search, voice dictation, prescribing insights, combination watches, cohort suggestions); advanced filters and anonymized research datasets.
 
 ### 4.3 Testing strategy
 

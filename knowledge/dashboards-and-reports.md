@@ -113,9 +113,9 @@ The dashboards need four things the Phase-0 schema does not have. All are cheap 
 
 | # | Gap | Needed by | Proposal |
 |---|---|---|---|
-| G1 | `appointments` table (date, time, patient, status, location) | DB1 today's list, no-shows, booking | Add in Phase 1 |
-| G2 | `visits.nextVisitDate` (structured date; paper column "management & next visit" is currently text only) | DB2 overdue follow-ups, R6/R7 | Add in Phase 1 |
-| G3 | `diagnoses` entity (episode-level coded problem + free text) | DB4 diagnosis distribution, research cohorts — ChatGPT discussion promised this | Add in Phase 1 |
-| G4 | `location` on visits/episodes (he works across clinics) | DB1 per-clinic views | Add in Phase 1 (optional field) |
+| G1 | `appointments` table (date, time, patient, status, location) | DB1 today's list, no-shows, booking | ☑ Approved (Q11) — applied in migration `phase1_dashboard_fields` (D21) |
+| G2 | `visits.nextVisitDate` (structured date; paper column "management & next visit" is currently text only) | DB2 overdue follow-ups, R6/R7 | ☑ Approved (Q12) — applied (D21) |
+| G3 | `diagnoses` entity (episode-level coded problem + free text) | DB4 diagnosis distribution, research cohorts — ChatGPT discussion promised this | ☑ Approved (Q13) — applied (D21) |
+| G4 | `location` on visits/episodes (he works across clinics) | DB1 per-clinic views | ☑ Approved (Q14) — applied (D21) |
 
-Tracked as open questions Q11–Q14 pending approval.
+**Priority update (D22, 2026-11-06):** DB4 (Prescribing) moved from Phase 3 to **Phase 2** at Dr. Ayman's request. Phase 2 dashboards: DB1 + DB2 + DB4. Phase 3: DB3 + DB5.

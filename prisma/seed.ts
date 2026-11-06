@@ -249,6 +249,72 @@ async function main() {
     }
   }
 
+  // ---- dashboard demo data (approved gaps G1–G4): diagnoses, appointments,
+  //      structured next-visit dates, clinic locations — idempotent ----
+  const DIAGNOSES: Record<number, string[]> = {
+    2: ['Anemia in pregnancy (mild)'],
+    3: ['Anemia in pregnancy (moderate)', 'Gestational hypertension — watch'],
+    5: ['Anemia in pregnancy (mild)', 'UTI in pregnancy'],
+    7: ['Primary infertility'],
+    8: ['Oligomenorrhea'],
+    9: ['Secondary infertility', 'Male factor under evaluation'],
+    10: ['Dysmenorrhea'],
+  };
+  const LOCATIONS = ['Maadi (demo)', 'Heliopolis (demo)'];
+  const APPOINTMENTS: Array<{ code: number; inDays: number; status: string; reason: string }> = [
+    { code: 1, inDays: 0, status: 'seen',      reason: 'متابعة حمل' },
+    { code: 3, inDays: 0, status: 'scheduled', reason: 'متابعة حمل + ضغط' },
+    { code: 5, inDays: 0, status: 'scheduled', reason: 'متابعة حمل' },
+    { code: 8, inDays: 3, status: 'scheduled', reason: 'نتيجة تحاليل هرمونات' },
+    { code: 9, inDays: -1, status: 'no_show',  reason: 'تقييم زوجي' },
+    { code: 10, inDays: 7, status: 'scheduled', reason: 'سونار حوض' },
+  ];
+
+  for (const p of PATIENTS) {
+    const patientCode = `AYC-${String(p.code).padStart(6, '0')}`;
+    const patient = await prisma.patient.findUnique({
+      where: { patientCode },
+      include: { episodes: { include: { visits: true, diagnoses: true } } },
+    });
+    if (!patient) continue;
+    const episode = patient.episodes[0];
+    if (!episode) continue;
+
+    if (episode.diagnoses.length === 0) {
+      for (const label of DIAGNOSES[p.code] ?? []) {
+        await prisma.diagnosis.create({ data: { episodeId: episode.id, label } });
+      }
+    }
+
+    for (const [i, v] of episode.visits.entries()) {
+      await prisma.visit.update({
+        where: { id: v.id },
+        data: {
+          location: v.location ?? LOCATIONS[(p.code + i) % 2],
+          nextVisitDate: v.nextVisitDate ?? new Date(v.visitDate.getTime() + 28 * 86_400_000),
+        },
+      });
+    }
+  }
+
+  if ((await prisma.appointment.count()) === 0) {
+    for (const a of APPOINTMENTS) {
+      const patientCode = `AYC-${String(a.code).padStart(6, '0')}`;
+      const patient = await prisma.patient.findUnique({ where: { patientCode }, include: { episodes: true } });
+      if (!patient) continue;
+      await prisma.appointment.create({
+        data: {
+          patientId: patient.id,
+          episodeId: patient.episodes[0]?.id,
+          scheduledAt: new Date(Date.now() + a.inDays * 86_400_000 + 3_600_000),
+          status: a.status,
+          reason: a.reason,
+          location: LOCATIONS[a.code % 2],
+        },
+      });
+    }
+  }
+
   const count = await prisma.patient.count();
   console.log(`Seed complete — ${count} fictional patients.`);
 }

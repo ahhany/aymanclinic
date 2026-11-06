@@ -128,9 +128,11 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
             semenAnalyses: { orderBy: { analysisDate: 'asc' } },
             visits: { orderBy: { visitDate: 'asc' } },
             prescriptions: { include: { medication: true } },
+            diagnoses: { orderBy: { diagnosedAt: 'asc' } },
           },
         },
         labReports: { include: { results: true }, orderBy: { reportDate: 'asc' } },
+        appointments: { orderBy: { scheduledAt: 'asc' } },
       },
     });
     if (!patient) return json(res, 404, { error: 'not_found' });
