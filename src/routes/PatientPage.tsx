@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useApi } from '../db/apiClient';
 import type { EpisodeDto, PatientDetailDto } from '../db/types';
@@ -6,6 +6,10 @@ import { useI18n } from '../i18n';
 import { MODULE_LABELS } from '../i18n/sections';
 import { Section } from '../components/Section';
 import { Card } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { AddVisitForm } from '../components/forms/AddVisitForm';
+import { AddLabReportForm } from '../components/forms/AddLabReportForm';
+import { DiagnosisList } from '../components/forms/DiagnosisList';
 import { ageFromDob, formatDate } from '../lib/dates';
 import { gestationalAgeAt } from '../lib/clinical/ga';
 
@@ -18,122 +22,137 @@ function Field({ label, value }: { label: string; value: string | number | null 
   );
 }
 
-function ObsEpisode({ episode }: { episode: EpisodeDto }) {
-  const p = episode.pregnancy;
-  const gaToday = p?.lmpDate ? gestationalAgeAt(new Date(p.lmpDate), new Date()) : null;
+function VisitsTable({ episode, showGa }: { episode: EpisodeDto; showGa: boolean }) {
+  const lmp = episode.pregnancy?.lmpDate;
   return (
-    <div className="space-y-3">
-      <Section section="history" defaultOpen>
-        <div className="grid gap-x-8 gap-y-1 sm:grid-cols-2">
-          <Field label="LMP" value={formatDate(p?.lmpDate)} />
-          <Field label="EDD" value={formatDate(p?.eddDate)} />
-          <Field label="G / P / A" value={`${p?.gravida ?? '—'} / ${p?.parity ?? '—'} / ${p?.abortions ?? '—'}`} />
-          <Field label="GA today" value={gaToday ? `${gaToday.weeks}+${gaToday.days} wks` : '—'} />
-        </div>
-      </Section>
-      <Section section="visits" defaultOpen>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-clinic-line text-left text-clinic-steel">
-              <th className="py-1 pe-2">Date</th>
-              <th className="py-1 pe-2">Wt (kg)</th>
-              <th className="py-1 pe-2">B/P</th>
-              <th className="py-1 pe-2">GA</th>
-              <th className="py-1 pe-2">Complaints</th>
-              <th className="py-1">Management & next visit</th>
+    <table className="w-full text-sm">
+      <thead>
+        <tr className="border-b border-clinic-line text-left text-clinic-steel">
+          <th className="py-1 pe-2">Date</th>
+          <th className="py-1 pe-2">Wt (kg)</th>
+          <th className="py-1 pe-2">B/P</th>
+          {showGa && <th className="py-1 pe-2">GA</th>}
+          <th className="py-1 pe-2">Complaints</th>
+          <th className="py-1 pe-2">Management</th>
+          <th className="py-1">Next visit</th>
+        </tr>
+      </thead>
+      <tbody>
+        {episode.visits.map((v) => {
+          const ga = showGa && lmp ? gestationalAgeAt(new Date(lmp), new Date(v.visitDate)) : null;
+          return (
+            <tr key={v.id} className="border-b border-clinic-line/60 last:border-0">
+              <td className="py-1.5 pe-2 whitespace-nowrap">{formatDate(v.visitDate)}</td>
+              <td className="py-1.5 pe-2">{v.weightKg ?? '—'}</td>
+              <td className="py-1.5 pe-2">
+                {v.bpSystolic != null && v.bpDiastolic != null ? `${v.bpSystolic}/${v.bpDiastolic}` : '—'}
+              </td>
+              {showGa && <td className="py-1.5 pe-2">{ga ? `${ga.weeks}+${ga.days}` : '—'}</td>}
+              <td className="py-1.5 pe-2">{v.complaints ?? '—'}</td>
+              <td className="py-1.5 pe-2">{v.management ?? '—'}</td>
+              <td className="py-1.5 whitespace-nowrap">{formatDate(v.nextVisitDate)}</td>
             </tr>
-          </thead>
-          <tbody>
-            {episode.visits.map((v) => {
-              const ga = p?.lmpDate ? gestationalAgeAt(new Date(p.lmpDate), new Date(v.visitDate)) : null;
-              return (
-                <tr key={v.id} className="border-b border-clinic-line/60 last:border-0">
-                  <td className="py-1.5 pe-2 whitespace-nowrap">{formatDate(v.visitDate)}</td>
-                  <td className="py-1.5 pe-2">{v.weightKg ?? '—'}</td>
-                  <td className="py-1.5 pe-2">
-                    {v.bpSystolic != null && v.bpDiastolic != null ? `${v.bpSystolic}/${v.bpDiastolic}` : '—'}
-                  </td>
-                  <td className="py-1.5 pe-2">{ga ? `${ga.weeks}+${ga.days}` : '—'}</td>
-                  <td className="py-1.5 pe-2">{v.complaints ?? '—'}</td>
-                  <td className="py-1.5">{v.management ?? '—'}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </Section>
-      <Section section="delivery">
-        <div className="grid gap-x-8 gap-y-1 sm:grid-cols-2">
-          <Field label="Date of delivery" value={formatDate(p?.deliveryDate)} />
-          <Field label="Mode" value={p?.deliveryMode} />
-        </div>
-      </Section>
-    </div>
+          );
+        })}
+      </tbody>
+    </table>
   );
 }
 
-function GynEpisode({ episode }: { episode: EpisodeDto }) {
+function EpisodeCard({ episode, onReload }: { episode: EpisodeDto; onReload: () => void }) {
+  const { t } = useI18n();
+  const [addingVisit, setAddingVisit] = useState(false);
+  const p = episode.pregnancy;
   const g = episode.gyn;
+  const isObs = episode.type === 'OBS';
+  const gaToday = p?.lmpDate ? gestationalAgeAt(new Date(p.lmpDate), new Date()) : null;
+
   return (
-    <div className="space-y-3">
-      <Section section="history" defaultOpen>
-        <div className="grid gap-x-8 gap-y-1 sm:grid-cols-2">
-          <Field label="Married for" value={g?.marriedFor} />
-          <Field label="Contraception" value={g?.contraception} />
-          <Field label="Menstrual" value={g?.menstrualHistory} />
-        </div>
-      </Section>
-      <Section section="semenAnalysis" defaultOpen={episode.semenAnalyses.length > 0}>
-        {episode.semenAnalyses.length === 0 ? (
-          <p className="text-sm text-slate-400">—</p>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-clinic-line text-left text-clinic-steel">
-                <th className="py-1 pe-2">Lab & date</th>
-                <th className="py-1 pe-2">Count</th>
-                <th className="py-1 pe-2">A / B / C / D</th>
-                <th className="py-1">Ab. forms</th>
-              </tr>
-            </thead>
-            <tbody>
-              {episode.semenAnalyses.map((s) => (
-                <tr key={s.id} className="border-b border-clinic-line/60 last:border-0">
-                  <td className="py-1.5 pe-2">
-                    {s.labName ?? '—'} · {formatDate(s.analysisDate)}
-                  </td>
-                  <td className="py-1.5 pe-2">{s.countMPerMl ?? '—'}</td>
-                  <td className="py-1.5 pe-2">
-                    {s.motilityAPct ?? '—'} / {s.motilityBPct ?? '—'} / {s.motilityCPct ?? '—'} / {s.motilityDPct ?? '—'}
-                  </td>
-                  <td className="py-1.5">{s.abnormalFormsPct != null ? `${s.abnormalFormsPct}%` : '—'}</td>
+    <Card className="overflow-hidden">
+      <div className="flex flex-wrap items-center gap-2 bg-clinic-navy px-4 py-1.5 text-sm font-semibold text-white">
+        <span>{MODULE_LABELS[episode.type]?.[0] ?? episode.type}</span>
+        <span className="text-white/60">{MODULE_LABELS[episode.type]?.[1]}</span>
+        {episode.location && <span className="text-xs text-white/60">· {episode.location}</span>}
+        <span className="ms-auto rounded bg-white/15 px-2 py-0.5 text-xs">{episode.status}</span>
+      </div>
+      <div className="space-y-3 p-3">
+        <DiagnosisList episodeId={episode.id} diagnoses={episode.diagnoses} onSaved={onReload} />
+
+        <Section section="history" defaultOpen>
+          {isObs ? (
+            <div className="grid gap-x-8 gap-y-1 sm:grid-cols-2">
+              <Field label="LMP" value={formatDate(p?.lmpDate)} />
+              <Field label="EDD" value={formatDate(p?.eddDate)} />
+              <Field label="G / P / A" value={`${p?.gravida ?? '—'} / ${p?.parity ?? '—'} / ${p?.abortions ?? '—'}`} />
+              <Field label="GA today" value={gaToday ? `${gaToday.weeks}+${gaToday.days} wks` : '—'} />
+            </div>
+          ) : (
+            <div className="grid gap-x-8 gap-y-1 sm:grid-cols-2">
+              <Field label="Married for" value={g?.marriedFor} />
+              <Field label="Contraception" value={g?.contraception} />
+              <Field label="Menstrual" value={g?.menstrualHistory} />
+            </div>
+          )}
+        </Section>
+
+        {!isObs && episode.semenAnalyses.length > 0 && (
+          <Section section="semenAnalysis" defaultOpen>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-clinic-line text-left text-clinic-steel">
+                  <th className="py-1 pe-2">Lab & date</th>
+                  <th className="py-1 pe-2">Count</th>
+                  <th className="py-1 pe-2">A / B / C / D</th>
+                  <th className="py-1">Ab. forms</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {episode.semenAnalyses.map((s) => (
+                  <tr key={s.id} className="border-b border-clinic-line/60 last:border-0">
+                    <td className="py-1.5 pe-2">
+                      {s.labName ?? '—'} · {formatDate(s.analysisDate)}
+                    </td>
+                    <td className="py-1.5 pe-2">{s.countMPerMl ?? '—'}</td>
+                    <td className="py-1.5 pe-2">
+                      {s.motilityAPct ?? '—'} / {s.motilityBPct ?? '—'} / {s.motilityCPct ?? '—'} / {s.motilityDPct ?? '—'}
+                    </td>
+                    <td className="py-1.5">{s.abnormalFormsPct != null ? `${s.abnormalFormsPct}%` : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Section>
         )}
-      </Section>
-      <Section section="followUps" defaultOpen>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-clinic-line text-left text-clinic-steel">
-              <th className="py-1 pe-2">Date</th>
-              <th className="py-1 pe-2">Complaint</th>
-              <th className="py-1">Management & next visit</th>
-            </tr>
-          </thead>
-          <tbody>
-            {episode.visits.map((v) => (
-              <tr key={v.id} className="border-b border-clinic-line/60 last:border-0">
-                <td className="py-1.5 pe-2 whitespace-nowrap">{formatDate(v.visitDate)}</td>
-                <td className="py-1.5 pe-2">{v.complaints ?? '—'}</td>
-                <td className="py-1.5">{v.management ?? '—'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Section>
-    </div>
+
+        <Section section={isObs ? 'visits' : 'followUps'} defaultOpen>
+          <VisitsTable episode={episode} showGa={isObs} />
+          {addingVisit ? (
+            <AddVisitForm
+              episodeId={episode.id}
+              onSaved={() => {
+                setAddingVisit(false);
+                onReload();
+              }}
+            />
+          ) : (
+            <div className="mt-2 flex justify-end">
+              <Button variant="outline" size="sm" onClick={() => setAddingVisit(true)}>
+                + {t('addVisit')}
+              </Button>
+            </div>
+          )}
+        </Section>
+
+        {isObs && (
+          <Section section="delivery">
+            <div className="grid gap-x-8 gap-y-1 sm:grid-cols-2">
+              <Field label="Date of delivery" value={formatDate(p?.deliveryDate)} />
+              <Field label="Mode" value={p?.deliveryMode} />
+            </div>
+          </Section>
+        )}
+      </div>
+    </Card>
   );
 }
 
@@ -143,12 +162,20 @@ export function PatientPage() {
   const { t } = useI18n();
   const [patient, setPatient] = useState<PatientDetailDto | null>(null);
   const [error, setError] = useState(false);
+  const [addingLab, setAddingLab] = useState(false);
+  const [labEpisodeId, setLabEpisodeId] = useState<string>('');
 
-  useEffect(() => {
+  const load = useCallback(() => {
     if (!id) return;
     api.get<PatientDetailDto>(`patients/${id}`).then(setPatient).catch(() => setError(true));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  useEffect(load, [load]);
+
+  useEffect(() => {
+    if (patient && !labEpisodeId) setLabEpisodeId(patient.episodes[0]?.id ?? '');
+  }, [patient, labEpisodeId]);
 
   if (error)
     return (
@@ -180,7 +207,7 @@ export function PatientPage() {
         <div className="grid gap-x-8 gap-y-1 p-4 sm:grid-cols-3">
           <Field label="Name · الاسم" value={patient.identity?.fullName} />
           <Field label="Code" value={patient.patientCode} />
-          <Field label={`Age · السن`} value={age != null ? `${age} ${t('ageYears')}` : '—'} />
+          <Field label="Age · السن" value={age != null ? `${age} ${t('ageYears')}` : '—'} />
           <Field label={`${t('mobile')} · المحمول`} value={patient.identity?.mobile} />
           <Field label={`${t('husband')} · اسم الزوج`} value={patient.identity?.husbandName} />
           <Field
@@ -191,21 +218,12 @@ export function PatientPage() {
       </Card>
 
       {patient.episodes.map((ep) => (
-        <Card key={ep.id} className="overflow-hidden">
-          <div className="flex items-center gap-2 bg-clinic-navy px-4 py-1.5 text-sm font-semibold text-white">
-            <span>{MODULE_LABELS[ep.type]?.[0] ?? ep.type}</span>
-            <span className="text-white/60">{MODULE_LABELS[ep.type]?.[1]}</span>
-            <span className="ms-auto rounded bg-white/15 px-2 py-0.5 text-xs">{ep.status}</span>
-          </div>
-          <div className="p-3">{ep.type === 'OBS' ? <ObsEpisode episode={ep} /> : <GynEpisode episode={ep} />}</div>
-        </Card>
+        <EpisodeCard key={ep.id} episode={ep} onReload={load} />
       ))}
 
-      <Section section="labs">
-        {patient.labReports.length === 0 ? (
-          <p className="text-sm text-slate-400">—</p>
-        ) : (
-          <div className="space-y-3">
+      <Section section="labs" defaultOpen>
+        {patient.labReports.length > 0 && (
+          <div className="mb-3 space-y-3">
             {patient.labReports.map((r) => (
               <div key={r.id} className="text-sm">
                 <p className="font-medium text-clinic-steel">
@@ -213,11 +231,45 @@ export function PatientPage() {
                 </p>
                 <p className="text-slate-600">
                   {r.results
-                    .map((x) => `${x.testName}: ${x.resultValue ?? x.resultValue === 0 ? x.resultValue : '—'} ${x.unit ?? ''}`)
+                    .map((x) => {
+                      const val = x.resultValue != null ? x.resultValue : '—';
+                      const flag = x.abnormalFlag === 'low' ? ' ↓' : x.abnormalFlag === 'high' ? ' ↑' : '';
+                      return `${x.testName}: ${val} ${x.unit ?? ''}${flag}`;
+                    })
                     .join(' · ')}
                 </p>
               </div>
             ))}
+          </div>
+        )}
+        {addingLab ? (
+          <div>
+            {patient.episodes.length > 1 && (
+              <select
+                value={labEpisodeId}
+                onChange={(e) => setLabEpisodeId(e.target.value)}
+                className="mb-2 h-9 rounded-md border border-clinic-line bg-white px-2 text-sm"
+              >
+                {patient.episodes.map((ep) => (
+                  <option key={ep.id} value={ep.id}>
+                    {MODULE_LABELS[ep.type]?.[0] ?? ep.type}
+                  </option>
+                ))}
+              </select>
+            )}
+            <AddLabReportForm
+              episodeId={labEpisodeId}
+              onSaved={() => {
+                setAddingLab(false);
+                load();
+              }}
+            />
+          </div>
+        ) : (
+          <div className="flex justify-end">
+            <Button variant="outline" size="sm" onClick={() => setAddingLab(true)} disabled={!labEpisodeId}>
+              + {t('addLabReport')}
+            </Button>
           </div>
         )}
       </Section>

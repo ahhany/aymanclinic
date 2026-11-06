@@ -5,6 +5,9 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { PrismaClient } from '@prisma/client';
 import { verifyPassword } from './passwords';
+import { flagFor } from '../src/lib/clinical/flags';
+import { eddFromLmp } from '../src/lib/clinical/ga';
+import { anonymousIdFor, nextPatientCode } from '../src/lib/sequence';
 
 // Dev convenience: default to the local SQLite file when no env is set.
 // Production always provides DATABASE_URL explicitly (Supabase Postgres, D6).
@@ -142,6 +145,160 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
   if (method === 'GET' && path === 'test-definitions') {
     const defs = await prisma.testDefinition.findMany({ orderBy: [{ panel: 'asc' }, { sortOrder: 'asc' }] });
     return json(res, 200, defs);
+  }
+
+  // ---------- mutations ----------
+
+  // Create patient + identity + first episode (OBS or GYN) — D14 code sequencing
+  if (method === 'POST' && path === 'patients') {
+    const body = await readBody(req);
+    const fullName = typeof body.fullName === 'string' ? body.fullName.trim() : '';
+    const episodeType = body.episodeType === 'OBS' || body.episodeType === 'GYN' ? body.episodeType : null;
+    if (!fullName || !episodeType) return json(res, 400, { error: 'fullName and episodeType (OBS|GYN) are required' });
+
+    const codes = (await prisma.patient.findMany({ select: { patientCode: true } })).map((p) => p.patientCode);
+    const patientCode = nextPatientCode(codes);
+    const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null);
+    const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+    const date = (v: unknown) => (typeof v === 'string' && v && !Number.isNaN(Date.parse(v)) ? new Date(v) : null);
+
+    const patient = await prisma.patient.create({
+      data: {
+        patientCode,
+        anonymousId: anonymousIdFor(patientCode),
+        dateOfBirth: date(body.dateOfBirth),
+        bloodGroup: str(body.bloodGroup),
+        rhType: str(body.rhType),
+        identity: {
+          create: { fullName, mobile: str(body.mobile), address: str(body.address), husbandName: str(body.husbandName) },
+        },
+        episodes: {
+          create: {
+            type: episodeType,
+            location: str(body.location),
+            ...(episodeType === 'OBS'
+              ? {
+                  pregnancy: {
+                    create: {
+                      lmpDate: date(body.lmpDate),
+                      eddDate: date(body.lmpDate) ? eddFromLmp(date(body.lmpDate)!) : null,
+                      gravida: num(body.gravida),
+                      parity: num(body.parity),
+                      abortions: num(body.abortions),
+                    },
+                  },
+                }
+              : {
+                  gyn: {
+                    create: {
+                      marriedFor: str(body.marriedFor),
+                      contraception: str(body.contraception),
+                      menstrualHistory: str(body.menstrualHistory),
+                    },
+                  },
+                }),
+          },
+        },
+      },
+    });
+    await audit(user.id, 'create', 'patient', patient.id, `${patientCode} (${episodeType})`);
+    return json(res, 201, { id: patient.id, patientCode });
+  }
+
+  // Add a visit row to an episode
+  const visitMatch = /^episodes\/([^/]+)\/visits$/.exec(path);
+  if (method === 'POST' && visitMatch) {
+    const body = await readBody(req);
+    const visitDate = typeof body.visitDate === 'string' && !Number.isNaN(Date.parse(body.visitDate)) ? new Date(body.visitDate) : null;
+    if (!visitDate) return json(res, 400, { error: 'visitDate is required' });
+    const episode = await prisma.episode.findUnique({ where: { id: visitMatch[1] } });
+    if (!episode) return json(res, 404, { error: 'episode_not_found' });
+    const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null);
+    const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+    const int = (v: unknown) => (typeof v === 'number' && Number.isInteger(v) ? v : null);
+
+    const visit = await prisma.visit.create({
+      data: {
+        episodeId: episode.id,
+        visitDate,
+        weightKg: num(body.weightKg),
+        bpSystolic: int(body.bpSystolic),
+        bpDiastolic: int(body.bpDiastolic),
+        ultrasoundNote: str(body.ultrasoundNote),
+        complaints: str(body.complaints),
+        management: str(body.management),
+        nextVisit: str(body.nextVisit),
+        nextVisitDate:
+          typeof body.nextVisitDate === 'string' && !Number.isNaN(Date.parse(body.nextVisitDate))
+            ? new Date(body.nextVisitDate)
+            : null,
+        location: str(body.location) ?? episode.location,
+      },
+    });
+    await audit(user.id, 'create', 'visit', visit.id, `episode ${episode.id}`);
+    return json(res, 201, { id: visit.id });
+  }
+
+  // Add a manual lab report with results; names/units/refs come from the
+  // test dictionary and abnormal flags are computed — never guessed (D8/D9)
+  const labMatch = /^episodes\/([^/]+)\/lab-reports$/.exec(path);
+  if (method === 'POST' && labMatch) {
+    const body = await readBody(req);
+    const reportDate = typeof body.reportDate === 'string' && !Number.isNaN(Date.parse(body.reportDate)) ? new Date(body.reportDate) : null;
+    const rawResults = Array.isArray(body.results) ? body.results : [];
+    if (!reportDate || rawResults.length === 0) return json(res, 400, { error: 'reportDate and at least one result are required' });
+    const episode = await prisma.episode.findUnique({ where: { id: labMatch[1] } });
+    if (!episode) return json(res, 404, { error: 'episode_not_found' });
+
+    const defs = await prisma.testDefinition.findMany();
+    const byCode = new Map(defs.map((d) => [d.testCode, d]));
+    const results = [];
+    for (const r of rawResults as Array<Record<string, unknown>>) {
+      const testCode = typeof r.testCode === 'string' ? r.testCode : null;
+      const def = testCode ? byCode.get(testCode) : undefined;
+      if (!def) return json(res, 400, { error: `unknown testCode: ${String(testCode)}` });
+      const value = typeof r.value === 'number' && Number.isFinite(r.value) ? r.value : null;
+      const text = typeof r.text === 'string' && r.text.trim() ? r.text.trim() : null;
+      if (value == null && text == null) continue;
+      results.push({
+        testCode: def.testCode,
+        testName: def.testName,
+        resultValue: value,
+        resultText: text,
+        unit: def.defaultUnit,
+        refLow: def.refLow,
+        refHigh: def.refHigh,
+        abnormalFlag: flagFor(value, def.refLow, def.refHigh),
+        verificationStatus: 'manual',
+      });
+    }
+    if (results.length === 0) return json(res, 400, { error: 'no usable results' });
+
+    const report = await prisma.labReport.create({
+      data: {
+        patientId: episode.patientId,
+        episodeId: episode.id,
+        reportDate,
+        laboratoryName: typeof body.laboratoryName === 'string' && body.laboratoryName.trim() ? body.laboratoryName.trim() : null,
+        sourceType: 'manual',
+        results: { create: results },
+      },
+    });
+    await audit(user.id, 'create', 'lab_report', report.id, `${results.length} results`);
+    return json(res, 201, { id: report.id, results: results.length });
+  }
+
+  // Add a diagnosis to an episode (G3/D21)
+  const diagMatch = /^episodes\/([^/]+)\/diagnoses$/.exec(path);
+  if (method === 'POST' && diagMatch) {
+    const body = await readBody(req);
+    const label = typeof body.label === 'string' ? body.label.trim() : '';
+    if (!label) return json(res, 400, { error: 'label is required' });
+    const episode = await prisma.episode.findUnique({ where: { id: diagMatch[1] } });
+    if (!episode) return json(res, 404, { error: 'episode_not_found' });
+    const diag = await prisma.diagnosis.create({ data: { episodeId: episode.id, label } });
+    await audit(user.id, 'create', 'diagnosis', diag.id, label);
+    return json(res, 201, { id: diag.id });
   }
 
   return json(res, 404, { error: 'not_found' });

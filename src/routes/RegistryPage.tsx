@@ -5,7 +5,9 @@ import type { RegistryPatient } from '../db/types';
 import { useI18n } from '../i18n';
 import { MODULE_LABELS } from '../i18n/sections';
 import { Input } from '../components/ui/input';
+import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
+import { NewPatientDialog } from '../components/NewPatientDialog';
 import { cn } from '../lib/utils';
 
 const MODULE_CHIP: Record<string, string> = {
@@ -20,6 +22,7 @@ export function RegistryPage() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [patients, setPatients] = useState<RegistryPatient[] | null>(null);
+  const [showNew, setShowNew] = useState(false);
 
   useEffect(() => {
     const handle = setTimeout(() => {
@@ -30,17 +33,21 @@ export function RegistryPage() {
     }, 200);
     return () => clearTimeout(handle);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search]);
+  }, [search, showNew === false]);
 
   return (
     <div className="space-y-4">
-      <Input
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder={t('searchPlaceholder')}
-        className="max-w-lg"
-        autoFocus
-      />
+      <div className="flex items-center gap-3">
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={t('searchPlaceholder')}
+          className="max-w-lg"
+          autoFocus
+        />
+        <Button onClick={() => setShowNew(true)}>+ {t('newPatient')}</Button>
+      </div>
+      {showNew && <NewPatientDialog onClose={() => setShowNew(false)} />}
       <Card className="overflow-x-auto">
         <table className="w-full min-w-[640px] text-sm">
           <thead>

@@ -89,6 +89,7 @@ export interface EpisodeDto {
   id: string;
   type: 'OBS' | 'GYN' | 'ICSI' | string;
   status: string;
+  location: string | null;
   pregnancy: {
     lmpDate: string | null;
     eddDate: string | null;
