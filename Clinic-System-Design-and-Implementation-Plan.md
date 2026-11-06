@@ -4,6 +4,8 @@
 **Rev 2 — 2026-11-06** · Based on: Dr. Ayman's ChatGPT discussion export (28 Oct 2025), OBS clinic paper file (2025), GYN clinic paper file (2025)
 **Rev 2 changes:** Lovable removed from the build path — the system is developed and tested directly in this workspace and pushed to `github.com/ahhany/aymanclinic`. Front-end stack changed from Next.js to **Vite + React + TS + Tailwind + shadcn/ui** so the repo stays natively importable into Lovable.dev later if that deployment option is chosen. Data layer: Prisma (SQLite for dev/test → Supabase Postgres for production). Companion knowledge base lives in `knowledge/`.
 
+**Rev 2.1 — 2026-11-06:** Dashboards & reports designed before Phase 1 (`knowledge/dashboards-and-reports.md`): five dashboards (Operations, High-Risk Pregnancy Board, Outcomes & Quality, Prescribing Analytics, Research & Export), a 36-report analytical catalogue, and 9 AI-assisted intelligent reports. The design surfaced four cheap-now/expensive-later schema additions (appointments, structured next-visit date, diagnoses, clinic location) proposed for the Phase 1 migration — pending approval (open questions Q11–Q15). Phase 0 scaffold complete and verified.
+
 ---
 
 ## 1. Background & Goals
@@ -103,7 +105,7 @@ Adding a new test = inserting a row in `test_definitions`, not a schema migratio
 5. **Lab entry** — manual grid (mirrors the paper lab row) or **AI Lab Reader** (camera/PDF → extraction → Review & Confirm → save; source image attached).
 6. **Medication Library** — personal list grouped by active ingredient; reuse previous prescriptions.
 7. **Reports & Export** — Research Export Builder; first template *Pregnant patients with Hb < 11 g/dL* → 5-sheet anonymized Excel workbook + Export_Metadata sheet (unit normalization g/L→g/dL, GA at sample date, trimester classification, one-row-per-pregnancy vs per-measurement, validation rules — as designed in the ChatGPT discussion).
-8. **Dashboard (Phase 3).**
+8. **Dashboards (Phase 2–3)** — five role-oriented boards designed in `knowledge/dashboards-and-reports.md`: **DB1 Clinic Operations** (today's list, volumes, pending items — the future home screen), **DB2 High-Risk Pregnancy Board** (GA clock, BP/Hb/GDM/scan-gap watches, overdue follow-ups), **DB3 Outcomes & Quality** (CS rate, complications, anemia program, infertility mix), **DB4 Prescribing & Practice Analytics** (his explicit request: events vs repeats vs unique patients, brand ↔ ingredient), **DB5 Research & Export** (cohort templates, export history, data-quality warnings).
 9. **Settings** — users & roles, test definitions, medication catalogue, full-database export.
 
 ### 2.5 AI feature set (with safety rules)
@@ -156,13 +158,13 @@ Schema portability rule: no Postgres-only column types; JSON payloads stored as 
 Repo init in the real stack (nothing throwaway): Vite/React/TS/Tailwind/shadcn, PWA plugin, Prisma schema from `knowledge/data-dictionary.md`, auth shell, theme tokens matching the paper files' colours, i18n structure, CI (lint + typecheck + unit tests), seed script with 10 fictional demo patients.
 
 **Phase 1 — Functional clinic system, MVP (weeks 2–7)**
-Patient registry & search; OBS + GYN digital forms (hybrid layout, paper colours); visit grids; manual lab entry; attachments; medication library; patient-file print-to-PDF; roles; audit log; local backup/export. **Exit gate: full e2e suite green on 10 fictional patients.**
+Patient registry & search; OBS + GYN digital forms (hybrid layout, paper colours); visit grids; manual lab entry; attachments; medication library; patient-file print-to-PDF; roles; audit log; local backup/export. Schema additions from the dashboard design, if approved (Q11–Q14): `appointments`, `visits.nextVisitDate`, `diagnoses`, `location`. **Exit gate: full e2e suite green on 10 fictional patients.**
 
-**Phase 2 — AI & research engine (weeks 8–12)**
-AI Lab Reader (Review & Confirm), additional-tests dictionary UI, medication analytics, Research Export Engine with the Hb < 11 template, offline draft hardening.
+**Phase 2 — AI & research engine + daily dashboards (weeks 8–12)**
+AI Lab Reader (Review & Confirm), additional-tests dictionary UI, medication analytics, Research Export Engine with the Hb < 11 template, offline draft hardening. **Dashboards DB1 (Operations) and DB2 (High-Risk Pregnancy Board)** — the two daily-use boards.
 
 **Phase 3 — Expansion (after review of the ICSI paper file)**
-ICSI/IVF module, dashboards, voice dictation, clinical search, missing-data reminders.
+ICSI/IVF module; **dashboards DB3 (Outcomes & Quality), DB4 (Prescribing), DB5 (Research)**; intelligent reports I1–I9 (pre-visit briefs, lab-trend narratives, missing-data reminders, clinical search, voice dictation, prescribing insights, combination watches, cohort suggestions); advanced filters and anonymized research datasets.
 
 ### 4.3 Testing strategy
 

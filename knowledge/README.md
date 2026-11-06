@@ -7,6 +7,7 @@ Everything the project knows lives here, in files — never in chat/agent memory
 | `decisions.md` | Dated decision log (D1…). Never edit a settled decision — supersede it with a new entry. |
 | `data-dictionary.md` | Field-by-field mapping of the paper OBS/GYN forms → database schema. The single source of truth for the Prisma schema. |
 | `glossary.md` | Medical abbreviations used on the paper forms. |
+| `dashboards-and-reports.md` | The five dashboards (administrative / clinical / medical), the full analytical & intelligent reports catalogue, and the data-model gaps they surfaced. |
 | `open-questions.md` | Unanswered questions for Dr. Ayman / Ahmed, with status. |
 
 Source documents (read-only evidence, do not modify):
