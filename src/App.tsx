@@ -7,6 +7,8 @@ import { RegistryPage } from './routes/RegistryPage';
 import { PatientPage } from './routes/PatientPage';
 import { SettingsPage } from './routes/SettingsPage';
 import { MedicationsPage } from './routes/MedicationsPage';
+import { DashboardsPage } from './routes/DashboardsPage';
+import { PrintPatientPage } from './routes/PrintPatientPage';
 import type { ReactNode } from 'react';
 
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -33,7 +35,16 @@ export default function App() {
               <Route path="/patients/:id" element={<PatientPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/medications" element={<MedicationsPage />} />
+              <Route path="/dashboards" element={<DashboardsPage />} />
             </Route>
+            <Route
+              path="/patients/:id/print"
+              element={
+                <RequireAuth>
+                  <PrintPatientPage />
+                </RequireAuth>
+              }
+            />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>

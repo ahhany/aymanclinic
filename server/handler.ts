@@ -9,6 +9,9 @@ import { flagFor } from '../src/lib/clinical/flags';
 import { eddFromLmp } from '../src/lib/clinical/ga';
 import { anonymousIdFor, nextPatientCode } from '../src/lib/sequence';
 import { buildUltrasoundPayload, ULTRASOUND_FIELDS, type UltrasoundType } from '../src/lib/ultrasound';
+import type { RouteCtx } from './ctx';
+import { handleAttachmentRoutes } from './attachments';
+import { handleDashboardRoutes } from './dashboards';
 
 // Dev convenience: default to the local SQLite file when no env is set.
 // Production always provides DATABASE_URL explicitly (Supabase Postgres, D6).
@@ -43,9 +46,13 @@ function readBody(req: IncomingMessage): Promise<Record<string, unknown>> {
 }
 
 // Dev token format: "dev-<userId>" (localStorage client-side). Not production auth.
+// Also accepted as ?token= query param so <img>/<a> can open attachment files.
 async function authenticate(req: IncomingMessage): Promise<AuthedUser | null> {
   const header = req.headers['x-dev-token'];
-  const token = Array.isArray(header) ? header[0] : header;
+  let token = Array.isArray(header) ? header[0] : header;
+  if (!token) {
+    token = new URL(req.url ?? '/', 'http://localhost').searchParams.get('token') ?? undefined;
+  }
   if (!token || !token.startsWith('dev-')) return null;
   const user = await prisma.user.findUnique({ where: { id: token.slice(4) } });
   return user ? { id: user.id, name: user.name, role: user.role } : null;
@@ -137,6 +144,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         },
         labReports: { include: { results: true }, orderBy: { reportDate: 'asc' } },
         appointments: { orderBy: { scheduledAt: 'asc' } },
+        attachments: { orderBy: { createdAt: 'desc' } },
       },
     });
     if (!patient) return json(res, 404, { error: 'not_found' });
@@ -471,6 +479,11 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     await audit(user.id, 'update', 'pregnancy_details', episode.id, 'delivery/postnatal');
     return json(res, 200, { ok: true });
   }
+
+  // --- delegated route modules (attachments, dashboards) ---
+  const ctx: RouteCtx = { req, res, url, path, method, user, prisma, json, readBody, audit };
+  if (await handleAttachmentRoutes(ctx)) return;
+  if (await handleDashboardRoutes(ctx)) return;
 
   return json(res, 404, { error: 'not_found' });
 }

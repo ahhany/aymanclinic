@@ -41,7 +41,22 @@ export function useApi() {
     get: <T,>(path: string) => apiGet<T>(path, token),
     post: <T,>(path: string, body: unknown) => apiPost<T>(path, body, token),
     put: <T,>(path: string, body: unknown) => apiPut<T>(path, body, token),
+    upload: <T,>(path: string, form: FormData) => apiUpload<T>(path, form, token),
   };
+}
+
+/** Multipart upload — no JSON content-type so the browser sets the boundary. */
+export async function apiUpload<T>(path: string, form: FormData, token: string | null): Promise<T> {
+  const res = await fetch(`/api/${path}`, {
+    method: 'POST',
+    headers: token ? { 'x-dev-token': token } : undefined,
+    body: form,
+  });
+  if (!res.ok) {
+    const err = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new ApiError(res.status, err.error ?? `POST ${path} failed`);
+  }
+  return (await res.json()) as T;
 }
 
 export async function apiPut<T>(path: string, body: unknown, token: string | null): Promise<T> {

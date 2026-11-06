@@ -30,3 +30,6 @@ Thumbs.db
 coverage/
 playwright-report/
 test-results/
+
+# uploaded attachment files (dev storage) — never commit
+uploads/

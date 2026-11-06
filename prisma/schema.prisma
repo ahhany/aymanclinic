@@ -284,6 +284,11 @@ model Attachment {
   ownerId     String?
   storagePath String
   type        String? // ultrasound | report | other
+  fileName    String   @default("")
+  mimeType    String   @default("application/octet-stream")
+  sizeBytes   Int      @default(0)
+  note        String?
+  uploadedById String?
   createdAt   DateTime @default(now())
 }
 
