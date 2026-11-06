@@ -14,6 +14,7 @@ import { AddObstetricRowForm } from '../components/forms/AddObstetricRowForm';
 import { AddUltrasoundForm } from '../components/forms/AddUltrasoundForm';
 import { DeliveryForm } from '../components/forms/DeliveryForm';
 import { PrescribeForm } from '../components/forms/PrescribeForm';
+import { AttachmentsSection, type AttachmentDto } from '../components/AttachmentsSection';
 import { ageFromDob, formatDate } from '../lib/dates';
 import { gestationalAgeAt } from '../lib/clinical/ga';
 import { ULTRASOUND_FIELDS, ULTRASOUND_TYPE_LABELS, type UltrasoundType } from '../lib/ultrasound';
@@ -278,7 +279,10 @@ export function PatientPage() {
   const { id } = useParams<{ id: string }>();
   const api = useApi();
   const { t } = useI18n();
-  const [patient, setPatient] = useState<PatientDetailDto | null>(null);
+  // The detail GET also returns attachments (createdAt desc) — the shared
+  // PatientDetailDto predates them, so widen locally.
+  type PatientWithAttachments = PatientDetailDto & { attachments?: AttachmentDto[] };
+  const [patient, setPatient] = useState<PatientWithAttachments | null>(null);
   const [error, setError] = useState(false);
   const [addingLab, setAddingLab] = useState(false);
   const [labEpisodeId, setLabEpisodeId] = useState<string>('');
@@ -286,7 +290,7 @@ export function PatientPage() {
 
   const load = useCallback(() => {
     if (!id) return;
-    api.get<PatientDetailDto>(`patients/${id}`).then(setPatient).catch(() => setError(true));
+    api.get<PatientWithAttachments>(`patients/${id}`).then(setPatient).catch(() => setError(true));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -314,9 +318,14 @@ export function PatientPage() {
 
   return (
     <div className="space-y-4">
-      <Link to="/" className="text-sm text-clinic-blue hover:underline">
-        {t('backToRegistry')}
-      </Link>
+      <div className="flex items-center justify-between">
+        <Link to="/" className="text-sm text-clinic-blue hover:underline">
+          {t('backToRegistry')}
+        </Link>
+        <Link to={`/patients/${patient.id}/print`} className="text-sm text-clinic-blue hover:underline">
+          Print file · طباعة الملف
+        </Link>
+      </div>
 
       {/* Demographics strip — mirrors the paper header */}
       <Card className="overflow-hidden">
@@ -436,6 +445,13 @@ export function PatientPage() {
           </div>
         )}
       </Section>
+
+      <AttachmentsSection
+        patientId={patient.id}
+        attachments={patient.attachments ?? []}
+        episodes={patient.episodes.map((ep) => ({ id: ep.id, type: ep.type, status: ep.status }))}
+        onReload={load}
+      />
     </div>
   );
 }

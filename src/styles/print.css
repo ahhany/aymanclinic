@@ -1,0 +1,119 @@
+/*
+ * Print stylesheet for the patient-file print view (/patients/:id/print).
+ * A4 portrait, 12 mm margins, black text, clinic-navy headings (D19),
+ * thin-bordered tables, sections kept on one page where possible.
+ */
+
+@page {
+  size: A4 portrait;
+  margin: 12mm;
+}
+
+.print-sheet {
+  background: #ffffff;
+  font-size: 10.5pt;
+  line-height: 1.35;
+}
+
+/* Screen preview: a paper sheet floating on the clinic-paper background */
+@media screen {
+  .print-sheet {
+    max-width: 210mm;
+    margin: 1.5rem auto 3rem;
+    padding: 14mm 12mm;
+    border: 1px solid var(--color-clinic-line);
+    box-shadow: 0 2px 14px rgb(23 54 93 / 0.18);
+  }
+}
+
+.print-section {
+  page-break-inside: avoid;
+  break-inside: avoid;
+  margin-bottom: 0.85rem;
+}
+
+/* Bilingual section heading — navy with the paper file's red rule */
+.print-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0 0 0.4rem;
+  padding-bottom: 1pt;
+  border-bottom: 1.5pt solid var(--color-clinic-red);
+  color: var(--color-clinic-navy);
+  font-size: 11.5pt;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.print-heading .ar {
+  font-weight: 600;
+  font-size: 10.5pt;
+  color: var(--color-clinic-blue);
+}
+
+.print-kv-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  column-gap: 1.25rem;
+  row-gap: 0.15rem;
+}
+
+.print-kv {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.print-kv .k {
+  min-width: 6.5rem;
+  font-weight: 600;
+  color: var(--color-clinic-steel);
+}
+
+.print-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9.5pt;
+}
+
+.print-table th,
+.print-table td {
+  border: 0.5pt solid #9aa7b8;
+  padding: 2pt 5pt;
+  text-align: left;
+  vertical-align: top;
+}
+
+.print-table th {
+  background: #eef2f7;
+  color: var(--color-clinic-navy);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* Flagged (abnormal) lab results stand out on paper */
+.print-flag {
+  color: var(--color-clinic-red);
+  font-weight: 700;
+}
+
+.print-muted {
+  color: #55606e;
+}
+
+@media print {
+  body {
+    background: #ffffff !important;
+  }
+
+  .print-sheet {
+    color: #000000;
+  }
+
+  /* Navy/red are kept for headings per the paper palette, but everything
+   * body-level prints black for toner-friendly output. */
+  .print-kv .k {
+    color: #000000;
+  }
+}
