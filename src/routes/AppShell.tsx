@@ -22,6 +22,9 @@ export function AppShell() {
             <Link to="/settings" className="rounded px-3 py-1.5 hover:bg-white/10">
               {t('navSettings')}
             </Link>
+            <Link to="/medications" className="rounded px-3 py-1.5 hover:bg-white/10">
+              {t('navMedications')}
+            </Link>
           </nav>
           <div className="ms-auto flex items-center gap-3 text-sm">
             <span className="inline-flex items-center gap-1.5 text-white/70">

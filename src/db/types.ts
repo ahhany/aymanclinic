@@ -64,6 +64,34 @@ export interface AppointmentDto {
   reason: string | null;
 }
 
+export interface MedicationDto {
+  id: string;
+  brandName: string;
+  activeIngredient: string;
+  form: string | null;
+  strength: string | null;
+  prescriptionCount: number;
+}
+
+export interface UltrasoundMilestoneDto {
+  id: string;
+  type: string;
+  scanDate: string | null;
+  operator: string | null;
+  place: string | null;
+  payloadJson: string;
+}
+
+export interface ObstetricHistoryRowDto {
+  id: string;
+  year: number | null;
+  duration: string | null;
+  pregnancyNote: string | null;
+  complications: string | null;
+  deliveryMode: string | null;
+  postPartum: string | null;
+}
+
 export interface SemenAnalysisDto {
   id: string;
   labName: string | null;
@@ -97,7 +125,17 @@ export interface EpisodeDto {
     parity: number | null;
     abortions: number | null;
     deliveryDate: string | null;
+    hospital: string | null;
     deliveryMode: string | null;
+    anesthesia: string | null;
+    maternalComplications: string | null;
+    fetalComplications: string | null;
+    fetalSex: string | null;
+    postnatalDate: string | null;
+    postnatalPayment: string | null;
+    postnatalScar: string | null;
+    postnatalComplications: string | null;
+    postnatalFollowupTtt: string | null;
   } | null;
   gyn: {
     marriedFor: string | null;
@@ -109,6 +147,7 @@ export interface EpisodeDto {
   semenAnalyses: SemenAnalysisDto[];
   prescriptions: PrescriptionDto[];
   diagnoses: DiagnosisDto[];
+  ultrasounds: UltrasoundMilestoneDto[];
 }
 
 export interface PatientDetailDto {
@@ -123,4 +162,5 @@ export interface PatientDetailDto {
   episodes: EpisodeDto[];
   labReports: LabReportDto[];
   appointments: AppointmentDto[];
+  obstetricHistory: ObstetricHistoryRowDto[];
 }

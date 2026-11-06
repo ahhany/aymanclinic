@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useApi } from '../db/apiClient';
-import type { EpisodeDto, PatientDetailDto } from '../db/types';
+import type { EpisodeDto, PatientDetailDto, UltrasoundMilestoneDto } from '../db/types';
 import { useI18n } from '../i18n';
 import { MODULE_LABELS } from '../i18n/sections';
 import { Section } from '../components/Section';
@@ -10,8 +10,13 @@ import { Button } from '../components/ui/button';
 import { AddVisitForm } from '../components/forms/AddVisitForm';
 import { AddLabReportForm } from '../components/forms/AddLabReportForm';
 import { DiagnosisList } from '../components/forms/DiagnosisList';
+import { AddObstetricRowForm } from '../components/forms/AddObstetricRowForm';
+import { AddUltrasoundForm } from '../components/forms/AddUltrasoundForm';
+import { DeliveryForm } from '../components/forms/DeliveryForm';
+import { PrescribeForm } from '../components/forms/PrescribeForm';
 import { ageFromDob, formatDate } from '../lib/dates';
 import { gestationalAgeAt } from '../lib/clinical/ga';
+import { ULTRASOUND_FIELDS, ULTRASOUND_TYPE_LABELS, type UltrasoundType } from '../lib/ultrasound';
 
 function Field({ label, value }: { label: string; value: string | number | null | undefined }) {
   return (
@@ -59,9 +64,37 @@ function VisitsTable({ episode, showGa }: { episode: EpisodeDto; showGa: boolean
   );
 }
 
+function UltrasoundRow({ u }: { u: UltrasoundMilestoneDto }) {
+  const label = ULTRASOUND_TYPE_LABELS[u.type as UltrasoundType] ?? u.type;
+  let payload: Record<string, unknown> = {};
+  try {
+    payload = JSON.parse(u.payloadJson) as Record<string, unknown>;
+  } catch {
+    /* malformed payload — render header only */
+  }
+  const fields = ULTRASOUND_FIELDS[u.type as UltrasoundType] ?? [];
+  const summary = fields
+    .filter((f) => payload[f.key] !== undefined)
+    .map((f) => `${f.label}: ${payload[f.key] === true ? '✓' : String(payload[f.key])}`)
+    .join(' · ');
+  return (
+    <div className="text-sm">
+      <p className="font-medium text-clinic-steel">
+        {label} · {formatDate(u.scanDate)}
+        {u.operator ? ` · ${u.operator}` : ''}
+        {u.place ? ` (${u.place})` : ''}
+      </p>
+      {summary && <p className="text-slate-600">{summary}</p>}
+    </div>
+  );
+}
+
 function EpisodeCard({ episode, onReload }: { episode: EpisodeDto; onReload: () => void }) {
   const { t } = useI18n();
   const [addingVisit, setAddingVisit] = useState(false);
+  const [addingUS, setAddingUS] = useState(false);
+  const [addingRx, setAddingRx] = useState(false);
+  const [editingDelivery, setEditingDelivery] = useState(false);
   const p = episode.pregnancy;
   const g = episode.gyn;
   const isObs = episode.type === 'OBS';
@@ -91,6 +124,32 @@ function EpisodeCard({ episode, onReload }: { episode: EpisodeDto; onReload: () 
               <Field label="Married for" value={g?.marriedFor} />
               <Field label="Contraception" value={g?.contraception} />
               <Field label="Menstrual" value={g?.menstrualHistory} />
+            </div>
+          )}
+        </Section>
+
+        <Section section="ultrasounds" defaultOpen={episode.ultrasounds.length > 0}>
+          {episode.ultrasounds.length > 0 && (
+            <div className="mb-2 space-y-2">
+              {episode.ultrasounds.map((u) => (
+                <UltrasoundRow key={u.id} u={u} />
+              ))}
+            </div>
+          )}
+          {addingUS ? (
+            <AddUltrasoundForm
+              episodeId={episode.id}
+              module={episode.type}
+              onSaved={() => {
+                setAddingUS(false);
+                onReload();
+              }}
+            />
+          ) : (
+            <div className="flex justify-end">
+              <Button variant="outline" size="sm" onClick={() => setAddingUS(true)}>
+                + U/S · سونار
+              </Button>
             </div>
           )}
         </Section>
@@ -143,12 +202,71 @@ function EpisodeCard({ episode, onReload }: { episode: EpisodeDto; onReload: () 
           )}
         </Section>
 
-        {isObs && (
-          <Section section="delivery">
-            <div className="grid gap-x-8 gap-y-1 sm:grid-cols-2">
-              <Field label="Date of delivery" value={formatDate(p?.deliveryDate)} />
-              <Field label="Mode" value={p?.deliveryMode} />
+        <Section section="medications" defaultOpen={episode.prescriptions.length > 0}>
+          {episode.prescriptions.length > 0 && (
+            <div className="mb-2 space-y-1">
+              {episode.prescriptions.map((rx) => (
+                <p key={rx.id} className="text-sm">
+                  <span className="font-medium text-clinic-steel">
+                    {rx.medication.brandName}
+                    {rx.medication.strength ? ` ${rx.medication.strength}` : ''}
+                  </span>{' '}
+                  <span className="text-slate-600">
+                    {[rx.dose, rx.frequency, rx.indication].filter(Boolean).join(' · ')} —{' '}
+                    {formatDate(rx.prescriptionDate)}
+                  </span>
+                </p>
+              ))}
             </div>
+          )}
+          {addingRx ? (
+            <PrescribeForm
+              episodeId={episode.id}
+              onSaved={() => {
+                setAddingRx(false);
+                onReload();
+              }}
+            />
+          ) : (
+            <div className="flex justify-end">
+              <Button variant="outline" size="sm" onClick={() => setAddingRx(true)}>
+                + Prescribe · وصف دواء
+              </Button>
+            </div>
+          )}
+        </Section>
+
+        {isObs && (
+          <Section section="delivery" defaultOpen={!!p?.deliveryDate}>
+            {editingDelivery ? (
+              <DeliveryForm
+                key={p?.deliveryDate ?? 'new'}
+                episodeId={episode.id}
+                pregnancy={p}
+                onSaved={() => {
+                  setEditingDelivery(false);
+                  onReload();
+                }}
+              />
+            ) : (
+              <>
+                <div className="grid gap-x-8 gap-y-1 sm:grid-cols-2">
+                  <Field label="Date of delivery" value={formatDate(p?.deliveryDate)} />
+                  <Field label="Hospital" value={p?.hospital} />
+                  <Field label="Mode" value={p?.deliveryMode} />
+                  <Field label="Anesthesia" value={p?.anesthesia} />
+                  <Field label="Maternal comp." value={p?.maternalComplications} />
+                  <Field label="Fetal comp." value={p?.fetalComplications} />
+                  <Field label="Fetal sex" value={p?.fetalSex} />
+                  <Field label="Postnatal visit" value={formatDate(p?.postnatalDate)} />
+                </div>
+                <div className="mt-2 flex justify-end">
+                  <Button variant="outline" size="sm" onClick={() => setEditingDelivery(true)}>
+                    Record / update · تسجيل
+                  </Button>
+                </div>
+              </>
+            )}
           </Section>
         )}
       </div>
@@ -164,6 +282,7 @@ export function PatientPage() {
   const [error, setError] = useState(false);
   const [addingLab, setAddingLab] = useState(false);
   const [labEpisodeId, setLabEpisodeId] = useState<string>('');
+  const [addingObh, setAddingObh] = useState(false);
 
   const load = useCallback(() => {
     if (!id) return;
@@ -216,6 +335,50 @@ export function PatientPage() {
           />
         </div>
       </Card>
+
+      <Section section="obstetricHistory" defaultOpen={patient.obstetricHistory.length > 0}>
+        {patient.obstetricHistory.length > 0 && (
+          <table className="mb-2 w-full text-sm">
+            <thead>
+              <tr className="border-b border-clinic-line text-left text-clinic-steel">
+                <th className="py-1 pe-2">Year</th>
+                <th className="py-1 pe-2">Duration</th>
+                <th className="py-1 pe-2">Pregnancy</th>
+                <th className="py-1 pe-2">Comp</th>
+                <th className="py-1 pe-2">Mode</th>
+                <th className="py-1">Post-partum</th>
+              </tr>
+            </thead>
+            <tbody>
+              {patient.obstetricHistory.map((r) => (
+                <tr key={r.id} className="border-b border-clinic-line/60 last:border-0">
+                  <td className="py-1.5 pe-2">{r.year ?? '—'}</td>
+                  <td className="py-1.5 pe-2">{r.duration ?? '—'}</td>
+                  <td className="py-1.5 pe-2">{r.pregnancyNote ?? '—'}</td>
+                  <td className="py-1.5 pe-2">{r.complications ?? '—'}</td>
+                  <td className="py-1.5 pe-2">{r.deliveryMode ?? '—'}</td>
+                  <td className="py-1.5">{r.postPartum ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        {addingObh ? (
+          <AddObstetricRowForm
+            patientId={patient.id}
+            onSaved={() => {
+              setAddingObh(false);
+              load();
+            }}
+          />
+        ) : (
+          <div className="flex justify-end">
+            <Button variant="outline" size="sm" onClick={() => setAddingObh(true)}>
+              + Row · إضافة سطر
+            </Button>
+          </div>
+        )}
+      </Section>
 
       {patient.episodes.map((ep) => (
         <EpisodeCard key={ep.id} episode={ep} onReload={load} />

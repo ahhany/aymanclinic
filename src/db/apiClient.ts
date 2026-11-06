@@ -40,5 +40,19 @@ export function useApi() {
   return {
     get: <T,>(path: string) => apiGet<T>(path, token),
     post: <T,>(path: string, body: unknown) => apiPost<T>(path, body, token),
+    put: <T,>(path: string, body: unknown) => apiPut<T>(path, body, token),
   };
+}
+
+export async function apiPut<T>(path: string, body: unknown, token: string | null): Promise<T> {
+  const res = await fetch(`/api/${path}`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json', ...(token ? { 'x-dev-token': token } : {}) },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new ApiError(res.status, err.error ?? `PUT ${path} failed`);
+  }
+  return (await res.json()) as T;
 }
