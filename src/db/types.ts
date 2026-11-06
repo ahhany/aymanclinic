@@ -52,8 +52,19 @@ export interface DiagnosisDto {
   id: string;
   label: string;
   code: string | null;
+  category: string | null; // risk_factor | general (E6, D26)
   status: string;
   diagnosedAt: string;
+}
+
+export interface NewbornDto {
+  id: string;
+  sortOrder: number;
+  sex: string | null;
+  birthWeightG: number | null;
+  apgar1: number | null;
+  apgar5: number | null;
+  nicuAdmission: boolean | null;
 }
 
 export interface AppointmentDto {
@@ -136,6 +147,13 @@ export interface EpisodeDto {
     postnatalScar: string | null;
     postnatalComplications: string | null;
     postnatalFollowupTtt: string | null;
+    // Rich outcomes (E1–E3, D26)
+    outcome: string | null;
+    outcomeDate: string | null;
+    outcomeGaWeeks: number | null;
+    labourOnset: string | null;
+    csUrgency: string | null;
+    csIndication: string | null;
   } | null;
   gyn: {
     marriedFor: string | null;
@@ -145,6 +163,7 @@ export interface EpisodeDto {
   } | null;
   visits: VisitDto[];
   semenAnalyses: SemenAnalysisDto[];
+  newborns: NewbornDto[];
   prescriptions: PrescriptionDto[];
   diagnoses: DiagnosisDto[];
   ultrasounds: UltrasoundMilestoneDto[];
@@ -156,6 +175,7 @@ export interface PatientDetailDto {
   dateOfBirth: string | null;
   bloodGroup: string | null;
   rhType: string | null;
+  heightCm: number | null;
   pastHistory: string | null;
   familyHistory: string | null;
   identity: { fullName: string; mobile: string | null; address: string | null; husbandName: string | null } | null;

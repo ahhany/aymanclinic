@@ -44,6 +44,10 @@ export function NewPatientDialog({ onClose }: { onClose: () => void }) {
         dateOfBirth: str('dateOfBirth'),
         bloodGroup: str('bloodGroup'),
         rhType: str('rhType'),
+        heightCm: (() => {
+          const v = str('heightCm');
+          return v ? Number(v) : undefined;
+        })(),
         episodeType,
         lmpDate: episodeType === 'OBS' ? str('lmpDate') : undefined,
         gravida: episodeType === 'OBS' ? int('gravida') : undefined,
@@ -109,6 +113,9 @@ export function NewPatientDialog({ onClose }: { onClose: () => void }) {
                 <option>−</option>
               </select>
             </div>
+          </Field>
+          <Field label="Height (cm) · الطول">
+            <Input name="heightCm" type="number" min="100" max="220" step="0.5" placeholder="160" />
           </Field>
         </div>
 

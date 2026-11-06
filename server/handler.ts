@@ -136,6 +136,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
             pregnancy: true,
             gyn: true,
             ultrasounds: { orderBy: { scanDate: 'asc' } },
+            newborns: { orderBy: { sortOrder: 'asc' } },
             semenAnalyses: { orderBy: { analysisDate: 'asc' } },
             visits: { orderBy: { visitDate: 'asc' } },
             prescriptions: { include: { medication: true } },
@@ -178,6 +179,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
         dateOfBirth: date(body.dateOfBirth),
         bloodGroup: str(body.bloodGroup),
         rhType: str(body.rhType),
+        heightCm: num(body.heightCm),
         identity: {
           create: { fullName, mobile: str(body.mobile), address: str(body.address), husbandName: str(body.husbandName) },
         },
@@ -305,7 +307,16 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     if (!label) return json(res, 400, { error: 'label is required' });
     const episode = await prisma.episode.findUnique({ where: { id: diagMatch[1] } });
     if (!episode) return json(res, 404, { error: 'episode_not_found' });
-    const diag = await prisma.diagnosis.create({ data: { episodeId: episode.id, label } });
+    const diag = await prisma.diagnosis.create({
+      data: {
+        episodeId: episode.id,
+        label,
+        category:
+          typeof body.category === 'string' && ['risk_factor', 'general'].includes(body.category)
+            ? body.category
+            : null,
+      },
+    });
     await audit(user.id, 'create', 'diagnosis', diag.id, label);
     return json(res, 201, { id: diag.id });
   }
@@ -457,6 +468,8 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     if (episode.type !== 'OBS') return json(res, 400, { error: 'not_an_obs_episode' });
     const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null);
     const date = (v: unknown) => (typeof v === 'string' && v && !Number.isNaN(Date.parse(v)) ? new Date(v) : null);
+    const int = (v: unknown) => (typeof v === 'number' && Number.isInteger(v) ? v : null);
+    const oneOf = (v: unknown, allowed: string[]) => (typeof v === 'string' && allowed.includes(v) ? v : null);
     const data = {
       deliveryDate: date(body.deliveryDate),
       hospital: str(body.hospital),
@@ -470,11 +483,35 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       postnatalScar: str(body.postnatalScar),
       postnatalComplications: str(body.postnatalComplications),
       postnatalFollowupTtt: str(body.postnatalFollowupTtt),
+      // Rich outcomes (E1–E3, D26)
+      outcome: oneOf(body.outcome, ['ongoing', 'liveBirth', 'miscarriage', 'stillbirth', 'top']),
+      outcomeDate: date(body.outcomeDate),
+      outcomeGaWeeks: int(body.outcomeGaWeeks),
+      labourOnset: oneOf(body.labourOnset, ['spontaneous', 'induced', 'electiveCS']),
+      csUrgency: oneOf(body.csUrgency, ['elective', 'emergency']),
+      csIndication: str(body.csIndication),
     };
     if (episode.pregnancy) {
       await prisma.pregnancyDetails.update({ where: { episodeId: episode.id }, data });
     } else {
       await prisma.pregnancyDetails.create({ data: { episodeId: episode.id, ...data } });
+    }
+
+    // Newborns (E1): when the payload carries a list, it replaces the episode's rows
+    if (Array.isArray(body.newborns)) {
+      const rows = (body.newborns as Array<Record<string, unknown>>)
+        .map((nb, i) => ({
+          episodeId: episode.id,
+          sortOrder: i,
+          sex: oneOf(nb.sex, ['male', 'female']),
+          birthWeightG: int(nb.birthWeightG),
+          apgar1: int(nb.apgar1),
+          apgar5: int(nb.apgar5),
+          nicuAdmission: typeof nb.nicuAdmission === 'boolean' ? nb.nicuAdmission : null,
+        }))
+        .filter((nb) => nb.sex !== null || nb.birthWeightG !== null);
+      await prisma.newborn.deleteMany({ where: { episodeId: episode.id } });
+      if (rows.length > 0) await prisma.newborn.createMany({ data: rows });
     }
     await audit(user.id, 'update', 'pregnancy_details', episode.id, 'delivery/postnatal');
     return json(res, 200, { ok: true });

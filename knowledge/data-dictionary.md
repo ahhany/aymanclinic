@@ -90,3 +90,13 @@ Header: OBSTETRIC — YEAR · DURATION · PREGNANCY · COMP · MODE · POST-PART
 ## Seed data: test_definitions (initial panel)
 
 CBC_HB, CBC_HCT, CBC_RBC, CBC_MCV, CBC_MCH, CBC_MCHC, CBC_RDW, CBC_WBC (display "TLC"), CBC_PLT, FERRITIN, SERUM_IRON, ALT, AST, CREATININE, UREA, PT, PC, FBS, PPBS, URINE_ANALYSIS, CALCIUM, TSH — each with default unit and reference range; panel grouping: CBC basic / CBC extended / OBS lab row / additional.
+
+## Approved Phase-1 additions (D26 — rich outcomes, migration `phase1_rich_outcomes`)
+
+| Table · column | Type | Purpose |
+|---|---|---|
+| `newborns` (new table) | episode FK, sort_order, sex?, birth_weight_g?, apgar1?, apgar5?, nicu_admission? | per-baby outcomes incl. twins (E1) |
+| `pregnancy_details.outcome` / `outcome_date` / `outcome_ga_weeks` | text? / date? / int? | miscarriage & stillbirth visibility, loss-rate analytics (E2) |
+| `pregnancy_details.labour_onset` / `cs_urgency` / `cs_indication` | text? | elective vs emergency CS analytics (E3) |
+| `patients.height_cm` | float? | BMI + weight-gain analytics (E5) |
+| `diagnoses.category` | text? (risk_factor / general) | high-risk board stratification (E6) |

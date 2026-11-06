@@ -111,6 +111,12 @@
     color: #000000;
   }
 
+  /* Clinic logo in the document header — fixed physical size on paper */
+  .print-logo {
+    height: 15mm;
+    width: auto;
+  }
+
   /* Navy/red are kept for headings per the paper palette, but everything
    * body-level prints black for toner-friendly output. */
   .print-kv .k {

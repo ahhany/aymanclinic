@@ -129,7 +129,7 @@ async function main() {
   assert(badType.status === 400, 'invalid ultrasound type rejected');
   console.log('7. ultrasound milestone saved, invalid type rejected');
 
-  // --- delivery upsert ---
+  // --- delivery upsert (incl. rich outcomes + newborns, D26) ---
   const put = await req(
     `/episodes/${obs.id}/pregnancy`,
     {
@@ -140,6 +140,16 @@ async function main() {
         deliveryMode: 'cs',
         fetalSex: 'female',
         postnatalDate: '2026-11-06',
+        outcome: 'liveBirth',
+        outcomeDate: '2026-11-01',
+        outcomeGaWeeks: 38,
+        labourOnset: 'electiveCS',
+        csUrgency: 'elective',
+        csIndication: 'Previous CS',
+        newborns: [
+          { sex: 'female', birthWeightG: 3100, apgar1: 8, apgar5: 9, nicuAdmission: false },
+          { sex: 'male', birthWeightG: 2900, apgar1: 7, apgar5: 9, nicuAdmission: true },
+        ],
       }),
     },
     token,
@@ -153,8 +163,9 @@ async function main() {
     episodes: Array<{
       id: string;
       type: string;
-      pregnancy: { deliveryDate: string | null; deliveryMode: string | null } | null;
+      pregnancy: { deliveryDate: string | null; deliveryMode: string | null; outcome: string | null; csUrgency: string | null } | null;
       ultrasounds: Array<{ type: string; payloadJson: string }>;
+      newborns: Array<{ sex: string | null; birthWeightG: number | null; nicuAdmission: boolean | null }>;
       prescriptions: Array<{ id: string; dose: string | null; medication: { brandName: string } }>;
     }>;
   };
@@ -169,7 +180,10 @@ async function main() {
   assert(!('bogusKey' in payload), 'bogus ultrasound key dropped');
   assert(ep.pregnancy?.deliveryDate?.slice(0, 10) === '2026-11-01', 'delivery date persisted');
   assert(ep.pregnancy?.deliveryMode === 'cs', 'delivery mode persisted');
-  console.log('8. patient detail verifies: obx history, 2 prescriptions, U/S payload (bogus key dropped), delivery data');
+  assert(ep.pregnancy?.outcome === 'liveBirth' && ep.pregnancy?.csUrgency === 'elective', 'outcome/CS fields persisted');
+  assert(ep.newborns.length === 2, 'newborns persisted');
+  assert(ep.newborns[0].birthWeightG === 3100 && ep.newborns[1].nicuAdmission === true, 'newborn values persisted');
+  console.log('8. patient detail verifies: obx history, 2 prescriptions, U/S payload (bogus key dropped), delivery + outcome + 2 newborns');
 
   console.log('SMOKE 2 OK — 8 checks passed');
 }

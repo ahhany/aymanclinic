@@ -244,6 +244,7 @@ function EpisodeCard({ episode, onReload }: { episode: EpisodeDto; onReload: () 
                 key={p?.deliveryDate ?? 'new'}
                 episodeId={episode.id}
                 pregnancy={p}
+                newborns={episode.newborns}
                 onSaved={() => {
                   setEditingDelivery(false);
                   onReload();
@@ -259,8 +260,48 @@ function EpisodeCard({ episode, onReload }: { episode: EpisodeDto; onReload: () 
                   <Field label="Maternal comp." value={p?.maternalComplications} />
                   <Field label="Fetal comp." value={p?.fetalComplications} />
                   <Field label="Fetal sex" value={p?.fetalSex} />
+                  <Field label="Outcome" value={p?.outcome} />
+                  <Field
+                    label="Outcome date"
+                    value={
+                      p?.outcomeDate
+                        ? `${formatDate(p.outcomeDate)}${p.outcomeGaWeeks != null ? ` (${p.outcomeGaWeeks} wks)` : ''}`
+                        : null
+                    }
+                  />
+                  <Field label="Onset of labour" value={p?.labourOnset} />
+                  <Field label="CS urgency" value={p?.csUrgency} />
+                  <Field label="CS indication" value={p?.csIndication} />
                   <Field label="Postnatal visit" value={formatDate(p?.postnatalDate)} />
                 </div>
+                {episode.newborns.length > 0 && (
+                  <div className="mt-2 overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-clinic-line text-left text-clinic-steel">
+                          <th className="py-1 pe-2 font-medium">Baby</th>
+                          <th className="py-1 pe-2 font-medium">Sex</th>
+                          <th className="py-1 pe-2 font-medium">Weight</th>
+                          <th className="py-1 pe-2 font-medium">Apgar 1</th>
+                          <th className="py-1 pe-2 font-medium">Apgar 5</th>
+                          <th className="py-1 font-medium">NICU</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {episode.newborns.map((nb, i) => (
+                          <tr key={nb.id} className="border-b border-clinic-line/50">
+                            <td className="py-1 pe-2">{i + 1}</td>
+                            <td className="py-1 pe-2">{nb.sex ?? '—'}</td>
+                            <td className="py-1 pe-2">{nb.birthWeightG != null ? `${nb.birthWeightG} g` : '—'}</td>
+                            <td className="py-1 pe-2">{nb.apgar1 ?? '—'}</td>
+                            <td className="py-1 pe-2">{nb.apgar5 ?? '—'}</td>
+                            <td className="py-1">{nb.nicuAdmission ? 'Yes' : '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
                 <div className="mt-2 flex justify-end">
                   <Button variant="outline" size="sm" onClick={() => setEditingDelivery(true)}>
                     Record / update · تسجيل
@@ -315,6 +356,19 @@ export function PatientPage() {
   if (!patient) return <p className="p-6 text-slate-400">{t('loading')}</p>;
 
   const age = ageFromDob(patient.dateOfBirth);
+  // BMI (E5/D26): latest recorded weight across all episodes ÷ height²
+  const latestWeight = patient.episodes
+    .flatMap((e) => e.visits)
+    .filter((v) => v.weightKg != null)
+    .sort((a, b) => b.visitDate.localeCompare(a.visitDate))[0]?.weightKg;
+  const bmi =
+    patient.heightCm != null && latestWeight != null
+      ? latestWeight / Math.pow(patient.heightCm / 100, 2)
+      : null;
+  const heightBmi =
+    patient.heightCm != null
+      ? `${patient.heightCm} cm${bmi != null ? ` · BMI ${bmi.toFixed(1)}` : ''}`
+      : null;
 
   return (
     <div className="space-y-4">
@@ -342,6 +396,7 @@ export function PatientPage() {
             label="Blood group"
             value={patient.bloodGroup ? `${patient.bloodGroup} ${patient.rhType ?? ''}`.trim() : '—'}
           />
+          <Field label="Height · الطول" value={heightBmi} />
         </div>
       </Card>
 

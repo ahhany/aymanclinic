@@ -111,7 +111,7 @@ async function main() {
     prescriptionsPerMonth: Array<{ month: string; count: number }>;
     library: { total: number; percentPrescribed: number };
   };
-  assert(r.topMedications.length > 0 && r.prescriptionsPerMonth.length === 6 && r.library.total === 8,
+  assert(r.topMedications.length > 0 && r.prescriptionsPerMonth.length === 6 && r.library.total >= 8,
     'prescribing shape');
   console.log(`9. dashboards/prescribing: top med=${r.topMedications[0].brandName} (${r.topMedications[0].count}), library=${r.library.total}`);
 

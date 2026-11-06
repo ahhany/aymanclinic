@@ -459,8 +459,13 @@ export function PrintPatientPage() {
       <div className="print-sheet">
         {/* Document header — clinic identity + patient code/name/dates */}
         <header className="print-section" style={{ textAlign: 'center' }}>
-          <h1 style={{ fontSize: '14pt', fontWeight: 800, color: 'var(--color-clinic-navy)' }}>{L.clinicName[0]}</h1>
-          <p style={{ fontSize: '11pt', color: 'var(--color-clinic-blue)' }}>{L.clinicName[1]}</p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12pt' }}>
+            <img src="/logo.png" alt="Ayman Clinic" className="print-logo h-14 w-auto" />
+            <div>
+              <h1 style={{ fontSize: '14pt', fontWeight: 800, color: 'var(--color-clinic-navy)' }}>{L.clinicName[0]}</h1>
+              <p style={{ fontSize: '11pt', color: 'var(--color-clinic-blue)' }}>{L.clinicName[1]}</p>
+            </div>
+          </div>
           <p style={{ marginTop: '4pt', fontWeight: 700 }}>
             {L.patientFile[0]} · {L.patientFile[1]}
           </p>

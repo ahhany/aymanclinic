@@ -28,6 +28,7 @@ model Patient {
   dateOfBirth  DateTime?
   bloodGroup   String? // A | B | AB | O
   rhType       String? // + | -
+  heightCm     Float? // E5 (D26) — enables BMI & weight-gain analytics
   pastHistory  String?
   familyHistory String?
   status       String    @default("active") // active | inactive
@@ -64,6 +65,7 @@ model Diagnosis {
   episode     Episode  @relation(fields: [episodeId], references: [id], onDelete: Cascade)
   code        String?  // future ICD-10; optional for now
   label       String
+  category    String? // risk_factor | general (E6, D26) — risk factors feed the high-risk board
   status      String   @default("active") // active | resolved
   diagnosedAt DateTime @default(now())
   notes       String?
@@ -94,11 +96,26 @@ model Episode {
   gyn         GynDetails?
   ultrasounds UltrasoundMilestone[]
   semenAnalyses SemenAnalysis[]
+  newborns    Newborn[]
   visits      Visit[]
   labReports  LabReport[]
   prescriptions Prescription[]
   diagnoses   Diagnosis[]
   appointments Appointment[]
+}
+
+// One row per baby (E1, D26) — supports twins; replaces single-fetus fields over time
+model Newborn {
+  id            String   @id @default(uuid())
+  episodeId     String
+  episode       Episode  @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  sortOrder     Int      @default(0)
+  sex           String? // male | female
+  birthWeightG  Int?
+  apgar1        Int?
+  apgar5        Int?
+  nicuAdmission Boolean?
+  createdAt     DateTime @default(now())
 }
 
 model PregnancyDetails {
@@ -119,6 +136,13 @@ model PregnancyDetails {
   maternalComplications String?
   fetalComplications    String?
   fetalSex     String?
+  // Rich outcomes (E1–E3, D26) — all optional
+  outcome        String? // ongoing | liveBirth | miscarriage | stillbirth | top
+  outcomeDate    DateTime?
+  outcomeGaWeeks Int?
+  labourOnset    String? // spontaneous | induced | electiveCS
+  csUrgency      String? // elective | emergency
+  csIndication   String?
   // Post natal visit (OBS paper, page 1)
   postnatalDate          DateTime?
   postnatalPayment       String? // kept as text — open question Q9

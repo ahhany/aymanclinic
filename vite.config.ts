@@ -21,7 +21,7 @@ export default defineConfig({
         name: 'Ayman Clinic — Patient Records',
         short_name: 'AymanClinic',
         description: 'Digital patient records for OBS / GYN / ICSI clinics',
-        theme_color: '#17365D',
+        theme_color: '#FFFFFF',
         background_color: '#FFFFFF',
         display: 'standalone',
         orientation: 'landscape',

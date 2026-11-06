@@ -144,6 +144,7 @@ async function main() {
         patientCode,
         anonymousId: `ANON-${String(p.code).padStart(6, '0')}`,
         dateOfBirth: new Date(p.dob),
+        heightCm: 150 + ((p.code * 7) % 28), // deterministic demo heights 150–177 cm
         identity: { create: { fullName: p.name, mobile: p.mobile, husbandName: p.husband } },
       },
     });
