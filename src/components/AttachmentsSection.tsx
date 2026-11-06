@@ -3,7 +3,7 @@
 // /api/attachments/<id>/file?token=… so <a>/<img> can authenticate (D20).
 
 import { useState, type FormEvent } from 'react';
-import { useApi } from '../db/apiClient';
+import { useApi, API_BASE } from '../db/apiClient';
 import { useAuth } from '../auth/AuthContext';
 import { useI18n } from '../i18n';
 import { MODULE_LABELS } from '../i18n/sections';
@@ -101,7 +101,7 @@ export function AttachmentsSection({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fileUrl = (id: string) => `/api/attachments/${id}/file?token=${encodeURIComponent(token)}`;
+  const fileUrl = (id: string) => `${API_BASE}/api/attachments/${id}/file?token=${encodeURIComponent(token)}`;
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -132,7 +132,7 @@ export function AttachmentsSection({
     if (!window.confirm(l.confirmDelete)) return;
     setError(null);
     try {
-      const res = await fetch(`/api/attachments/${id}`, {
+      const res = await fetch(`${API_BASE}/api/attachments/${id}`, {
         method: 'DELETE',
         headers: token ? { 'x-dev-token': token } : undefined,
       });

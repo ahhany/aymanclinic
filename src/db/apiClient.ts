@@ -3,6 +3,12 @@
 
 import { useAuth } from '../auth/AuthContext';
 
+// API base: same-origin "/api" in dev (Vite middleware, D20); in production
+// set VITE_API_BASE_URL to the hosted API origin (Lovable publish, D27).
+const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') ?? '';
+
+export { API_BASE };
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -13,7 +19,7 @@ export class ApiError extends Error {
 }
 
 export async function apiGet<T>(path: string, token: string | null): Promise<T> {
-  const res = await fetch(`/api/${path}`, {
+  const res = await fetch(`${API_BASE}/api/${path}`, {
     headers: token ? { 'x-dev-token': token } : undefined,
   });
   if (!res.ok) throw new ApiError(res.status, `GET ${path} failed`);
@@ -21,7 +27,7 @@ export async function apiGet<T>(path: string, token: string | null): Promise<T> 
 }
 
 export async function apiPost<T>(path: string, body: unknown, token: string | null): Promise<T> {
-  const res = await fetch(`/api/${path}`, {
+  const res = await fetch(`${API_BASE}/api/${path}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', ...(token ? { 'x-dev-token': token } : {}) },
     body: JSON.stringify(body),
@@ -47,7 +53,7 @@ export function useApi() {
 
 /** Multipart upload — no JSON content-type so the browser sets the boundary. */
 export async function apiUpload<T>(path: string, form: FormData, token: string | null): Promise<T> {
-  const res = await fetch(`/api/${path}`, {
+  const res = await fetch(`${API_BASE}/api/${path}`, {
     method: 'POST',
     headers: token ? { 'x-dev-token': token } : undefined,
     body: form,
@@ -60,7 +66,7 @@ export async function apiUpload<T>(path: string, form: FormData, token: string |
 }
 
 export async function apiPut<T>(path: string, body: unknown, token: string | null): Promise<T> {
-  const res = await fetch(`/api/${path}`, {
+  const res = await fetch(`${API_BASE}/api/${path}`, {
     method: 'PUT',
     headers: { 'content-type': 'application/json', ...(token ? { 'x-dev-token': token } : {}) },
     body: JSON.stringify(body),
