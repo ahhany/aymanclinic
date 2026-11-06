@@ -150,7 +150,18 @@ export function PatientPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  if (error) return <p className="p-6 text-clinic-red">—</p>;
+  if (error)
+    return (
+      <div className="mx-auto max-w-md space-y-3 p-8 text-center">
+        <p className="text-lg font-semibold text-clinic-red">Could not load this patient file</p>
+        <p className="text-sm text-slate-500">
+          The record may be temporarily unavailable. Try reloading — if it persists, check the dev server.
+        </p>
+        <Link to="/" className="inline-block text-sm text-clinic-blue hover:underline">
+          {t('backToRegistry')}
+        </Link>
+      </div>
+    );
   if (!patient) return <p className="p-6 text-slate-400">{t('loading')}</p>;
 
   const age = ageFromDob(patient.dateOfBirth);
