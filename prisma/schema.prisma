@@ -1,0 +1,265 @@
+// Ayman Clinic — schema derived from knowledge/data-dictionary.md (single source of truth).
+// Portability rules (decision D6): no enums, no Decimal, no native Json —
+// String/Float/DateTime only, so SQLite (dev) and Postgres (prod) stay interchangeable.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  name         String
+  role         String // doctor | reception | assistant
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Patient {
+  id           String    @id @default(uuid())
+  patientCode  String    @unique // clinic-wide sequential, e.g. AYC-000125 (D14)
+  anonymousId  String    @unique // research identifier (D11)
+  dateOfBirth  DateTime?
+  bloodGroup   String? // A | B | AB | O
+  rhType       String? // + | -
+  pastHistory  String?
+  familyHistory String?
+  status       String    @default("active") // active | inactive
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  identity          PatientIdentity?
+  obstetricHistory  ObstetricHistoryRow[]
+  episodes          Episode[]
+  labReports        LabReport[]
+  attachments       Attachment[]
+}
+
+// RESTRICTED — identity ↔ code mapping, access-controlled separately (D11)
+model PatientIdentity {
+  patientId   String  @id
+  patient     Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  fullName    String
+  mobile      String?
+  address     String?
+  husbandName String?
+}
+
+// One row per pregnancy / GYN problem / ICSI cycle (D3)
+model Episode {
+  id        String   @id @default(uuid())
+  patientId String
+  patient   Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  type      String // OBS | GYN | ICSI
+  status    String   @default("open") // open | closed
+  openedAt  DateTime @default(now())
+  closedAt  DateTime?
+
+  pregnancy   PregnancyDetails?
+  gyn         GynDetails?
+  ultrasounds UltrasoundMilestone[]
+  semenAnalyses SemenAnalysis[]
+  visits      Visit[]
+  labReports  LabReport[]
+  prescriptions Prescription[]
+}
+
+model PregnancyDetails {
+  episodeId   String  @id
+  episode     Episode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  lmpDate     DateTime?
+  eddDate     DateTime?
+  gravida     Int?
+  parity      Int?
+  abortions   Int?
+  conceptionType String? // spontaneous | assisted | unknown
+  marriedFor  String?
+  // Delivery data (OBS paper, page 1)
+  deliveryDate DateTime?
+  hospital     String?
+  deliveryMode String? // vaginal | CS | other
+  anesthesia   String?
+  maternalComplications String?
+  fetalComplications    String?
+  fetalSex     String?
+  // Post natal visit (OBS paper, page 1)
+  postnatalDate          DateTime?
+  postnatalPayment       String? // kept as text — open question Q9
+  postnatalScar          String?
+  postnatalComplications String?
+  postnatalFollowupTtt   String?
+}
+
+model GynDetails {
+  episodeId        String  @id
+  episode          Episode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  marriedFor       String?
+  contraception    String?
+  menstrualHistory String?
+  lmpDate          DateTime?
+  remarks          String?
+}
+
+// Obstetric history grid (shared by both paper files)
+model ObstetricHistoryRow {
+  id           String  @id @default(uuid())
+  patientId    String
+  patient      Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  sortOrder    Int     @default(0)
+  year         Int?
+  duration     String?
+  pregnancyNote String?
+  complications String?
+  deliveryMode String?
+  postPartum   String?
+}
+
+// 1st U/S, 11–13 wks, 20 wks, follow-up scans, GYN 1st U/S.
+// Per-milestone findings travel as JSON text (D6 portability).
+model UltrasoundMilestone {
+  id          String   @id @default(uuid())
+  episodeId   String
+  episode     Episode  @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  type        String // first | nt_scan | anatomy_scan | followup | gyn_first
+  scanDate    DateTime?
+  operator    String?
+  place       String?
+  payloadJson String   @default("{}")
+  createdAt   DateTime @default(now())
+}
+
+model SemenAnalysis {
+  id               String    @id @default(uuid())
+  episodeId        String
+  episode          Episode   @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  labName          String?
+  analysisDate     DateTime?
+  countMPerMl      Float?
+  motilityAPct     Float?
+  motilityBPct     Float?
+  motilityCPct     Float?
+  motilityDPct     Float?
+  abnormalFormsPct Float?
+  createdAt        DateTime  @default(now())
+}
+
+model Visit {
+  id           String   @id @default(uuid())
+  episodeId    String
+  episode      Episode  @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  visitDate    DateTime
+  weightKg     Float?
+  bpSystolic   Int?
+  bpDiastolic  Int?
+  ultrasoundNote String?
+  complaints   String?
+  management   String?
+  nextVisit    String?
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  labReports   LabReport[]
+  prescriptions Prescription[]
+}
+
+model LabReport {
+  id                 String   @id @default(uuid())
+  patientId          String
+  patient            Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  episodeId          String?
+  episode            Episode? @relation(fields: [episodeId], references: [id], onDelete: SetNull)
+  visitId            String?
+  visit              Visit?   @relation(fields: [visitId], references: [id], onDelete: SetNull)
+  reportDate         DateTime
+  laboratoryName     String?
+  sourceType         String   @default("manual") // image | pdf | manual
+  originalFileId     String?
+  aiExtractionStatus String   @default("none") // none | pending | reviewed | confirmed (D9)
+  createdAt          DateTime @default(now())
+
+  results LabResult[]
+}
+
+// One row per analyte — makes "additional tests" free (D8)
+model LabResult {
+  id                 String  @id @default(uuid())
+  labReportId        String
+  labReport          LabReport @relation(fields: [labReportId], references: [id], onDelete: Cascade)
+  testCode           String
+  testName           String
+  resultValue        Float?
+  resultText         String?
+  unit               String?
+  refLow             Float?
+  refHigh            Float?
+  abnormalFlag       String? // low | normal | high | unknown
+  verificationStatus String  @default("manual") // manual | ai_extracted | clinician_verified (D9)
+  verifiedAt         DateTime?
+}
+
+model TestDefinition {
+  testCode    String  @id // CBC_HB, FERRITIN, ...
+  testName    String
+  defaultUnit String?
+  refLow      Float?
+  refHigh     Float?
+  panel       String? // cbc_basic | cbc_extended | obs_lab_row | additional
+  sortOrder   Int     @default(0)
+}
+
+model Medication {
+  id               String @id @default(uuid())
+  brandName        String
+  activeIngredient String
+  form             String?
+  strength         String?
+
+  prescriptions Prescription[]
+
+  @@unique([brandName, strength])
+}
+
+model Prescription {
+  id               String    @id @default(uuid())
+  episodeId        String
+  episode          Episode   @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  visitId          String?
+  visit            Visit?    @relation(fields: [visitId], references: [id], onDelete: SetNull)
+  medicationId     String
+  medication       Medication @relation(fields: [medicationId], references: [id])
+  prescriptionDate DateTime  @default(now())
+  dose             String?
+  frequency        String?
+  route            String?
+  durationDays     Int?
+  indication       String?
+  discontinuedAt   DateTime?
+}
+
+model Attachment {
+  id          String   @id @default(uuid())
+  patientId   String
+  patient     Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  ownerType   String // patient | episode | lab_report
+  ownerId     String?
+  storagePath String
+  type        String? // ultrasound | report | other
+  createdAt   DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String // create | update | delete | login | export
+  entity    String
+  entityId  String?
+  detail    String?
+  createdAt DateTime @default(now())
+}

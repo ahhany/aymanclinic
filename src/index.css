@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+/*
+ * Theme tokens — extracted from the vector fill palette of the paper files
+ * (decision D19): navy #17365D, blue #1F497D, steel #244061, crimson #C00000.
+ */
+@theme {
+  --color-clinic-navy: #17365d;
+  --color-clinic-blue: #1f497d;
+  --color-clinic-steel: #244061;
+  --color-clinic-red: #c00000;
+  --color-clinic-paper: #fdfdfb;
+  --color-clinic-line: #d8dee9;
+  --font-sans: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+body {
+  @apply bg-clinic-paper text-slate-800 antialiased;
+}
+
+/* Paper-file section header: bilingual, navy with red rule — mirrors the forms */
+.section-header {
+  @apply flex items-baseline justify-between gap-2 border-b-2 border-clinic-red bg-clinic-blue px-3 py-1.5 text-white;
+}

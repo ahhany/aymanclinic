@@ -1,0 +1,69 @@
+// UI chrome messages. Clinical section headers are bilingual by design (D13):
+// they render English + Arabic side by side like the paper file, from
+// src/i18n/sections.ts — not from this switchable dictionary.
+
+export type Language = 'en' | 'ar';
+
+const en = {
+  appTitle: 'Ayman Clinic — Patient Records',
+  appShort: 'AymanClinic',
+  navRegistry: 'Patient Registry',
+  navSettings: 'Settings',
+  login: 'Sign in',
+  loginSubtitle: 'Electronic patient files — demo environment, fictional data only',
+  email: 'Email',
+  password: 'Password',
+  loginError: 'Invalid email or password',
+  logout: 'Sign out',
+  searchPlaceholder: 'Search by name, code, or mobile…',
+  colCode: 'Code',
+  colName: 'Name',
+  colMobile: 'Mobile',
+  colModules: 'Files',
+  loading: 'Loading…',
+  noPatients: 'No patients found.',
+  openFile: 'Open file',
+  demoHint: 'Demo: doctor@clinic.local / demo1234',
+  backToRegistry: '← Registry',
+  ageYears: 'yrs',
+  husband: 'Husband',
+  mobile: 'Mobile',
+  settingsTitle: 'Settings',
+  testDictionary: 'Test dictionary',
+  testDictionaryNote: 'Adding a new laboratory test is a data row here — never a schema change (decision D8).',
+  connectionOnline: 'online',
+} as const;
+
+export type MessageKey = keyof typeof en;
+
+const ar: Record<MessageKey, string> = {
+  appTitle: 'عيادة د. أيمن — ملفات المرضى',
+  appShort: 'عيادة أيمن',
+  navRegistry: 'سجل المرضى',
+  navSettings: 'الإعدادات',
+  login: 'تسجيل الدخول',
+  loginSubtitle: 'ملفات المرضى الإلكترونية — بيئة تجريبية، بيانات وهمية فقط',
+  email: 'البريد الإلكتروني',
+  password: 'كلمة المرور',
+  loginError: 'بيانات الدخول غير صحيحة',
+  logout: 'تسجيل الخروج',
+  searchPlaceholder: 'ابحث بالاسم أو الكود أو المحمول…',
+  colCode: 'الكود',
+  colName: 'الاسم',
+  colMobile: 'المحمول',
+  colModules: 'الملفات',
+  loading: 'جارٍ التحميل…',
+  noPatients: 'لا يوجد مرضى.',
+  openFile: 'فتح الملف',
+  demoHint: 'تجريبي: doctor@clinic.local / demo1234',
+  backToRegistry: '→ السجل',
+  ageYears: 'سنة',
+  husband: 'الزوج',
+  mobile: 'المحمول',
+  settingsTitle: 'الإعدادات',
+  testDictionary: 'قاموس التحاليل',
+  testDictionaryNote: 'إضافة تحليل جديد تتم بسطر بيانات هنا — وليست تغييراً في قاعدة البيانات (قرار D8).',
+  connectionOnline: 'متصل',
+};
+
+export const messages: Record<Language, Record<MessageKey, string>> = { en, ar };
